@@ -273,7 +273,7 @@ device.prototype.auth = function(){
 
 }
 
-device.prototype.get_type = function(){
+device.prototype.getType = function(){
     return this.type;
 }
 

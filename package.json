@@ -1,0 +1,29 @@
+{
+  "name": "broadlinkjs",
+  "version": "0.1.0",
+  "description": "A Node.JS library for controlling Broadlink devices",
+  "main": "broadlink.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/momodalo/broadlinkjs.git"
+  },
+  "keywords": [
+    "Broadlink",
+    "IoT",
+    "remote",
+    "control"
+  ],
+  "author": "David Tao",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/momodalo/broadlinkjs/issues"
+  },
+  "homepage": "https://github.com/momodalo/broadlinkjs#readme",
+  "dependencies": {
+    "@types/node": "^7.0.5"
+  }
+}
