@@ -195,6 +195,7 @@ function device( host, mac, timeout=10){
 
     this.on = this.emitter.on;
     this.emit = this.emitter.emit;
+    this.removeListener = this.emitter.removeListener;
 
     this.timeout = timeout;
     this.count = Math.random()&0xffff;
