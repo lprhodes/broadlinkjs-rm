@@ -90,9 +90,9 @@ Broadlink.prototype.genDevice = function (devtype, host, mac){
         dev.a1();
         return dev;;
     }else if(devtype == 0x4EB5){ // MP1
-        dev = new device(host,mac);
-        dev.mp1();
-        return dev;;
+        // dev = new device(host,mac);
+        // dev.mp1();
+        return null;;
     }else{
         dev = new device(host,mac);
         dev.device();
@@ -179,9 +179,11 @@ Broadlink.prototype.discover = function(){
 
         if(!this.devices[mac]){
             var dev =  this.genDevice(devtype, host, mac);
-            this.devices[mac] = dev;
-            dev.on("deviceReady", () => { this.emit("deviceReady", dev); });
-            dev.auth();
+            if (dev) {
+              this.devices[mac] = dev;
+              dev.on("deviceReady", () => { this.emit("deviceReady", dev); });
+              dev.auth();
+            }
         }
     });
 
@@ -576,4 +578,3 @@ device.prototype.rm = function(){
         }
     });
 }
-
