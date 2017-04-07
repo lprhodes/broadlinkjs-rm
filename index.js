@@ -170,8 +170,14 @@ Broadlink.prototype.discover = function(){
     cs.on("message", (msg, rinfo) => {
         var host = rinfo;
         var mac = Buffer.alloc(6,0);
-        //mac = msg[0x3a:0x40];
-        msg.copy(mac, 0, 0x34, 0x40);
+
+        msg.copy(mac, 0x00, 0x3D);
+        msg.copy(mac, 0x01, 0x3E);
+        msg.copy(mac, 0x02, 0x3F);
+        msg.copy(mac, 0x03, 0x3C);
+        msg.copy(mac, 0x04, 0x3B);
+        msg.copy(mac, 0x05, 0x3A);
+
         var devtype = msg[0x34] | msg[0x35] << 8;
         if(!this.devices){
             this.devices = {};
