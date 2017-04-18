@@ -94,9 +94,10 @@ Broadlink.prototype.genDevice = function (devtype, host, mac){
         // dev.mp1();
         return null;;
     }else{
-        dev = new device(host,mac);
-        dev.device();
-        return dev;;
+        // dev = new device(host,mac);
+        // dev.device();
+        // return dev;;
+        return null;;
     }
 }
 
