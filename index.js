@@ -172,9 +172,9 @@ Broadlink.prototype.discover = function(){
         var host = rinfo;
         var mac = Buffer.alloc(6,0);
 
-        msg.copy(mac, 0x00, 0x3D);
+        msg.copy(mac, 0x00, 0x3F);
         msg.copy(mac, 0x01, 0x3E);
-        msg.copy(mac, 0x02, 0x3F);
+        msg.copy(mac, 0x02, 0x3D);
         msg.copy(mac, 0x03, 0x3C);
         msg.copy(mac, 0x04, 0x3B);
         msg.copy(mac, 0x05, 0x3A);
