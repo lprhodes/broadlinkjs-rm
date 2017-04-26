@@ -71,15 +71,15 @@ Broadlink.prototype.genDevice = function (devtype, host, mac){
         return dev;;
     }else if(devtype == 0x272a){ // RM2 Pro Plus
         dev = new device(host,mac);
-        dev.rm();
+        dev.rm(true);
         return dev;;
     }else if(devtype == 0x2787){ // RM2 Pro Plus2
         dev = new device(host,mac);
-        dev.rm();
+        dev.rm(true);
         return dev;;
     }else if(devtype == 0x278b){ // RM2 Pro Plus BL
         dev = new device(host,mac);
-        dev.rm();
+        dev.rm(true);
         return dev;;
     }else if(devtype == 0x278f){ // RM Mini Shate
         dev = new device(host,mac);
@@ -94,10 +94,9 @@ Broadlink.prototype.genDevice = function (devtype, host, mac){
         // dev.mp1();
         return null;;
     }else{
-        // dev = new device(host,mac);
-        // dev.device();
-        // return dev;;
-        return null;;
+        dev = new device(host,mac);
+        dev.device();
+        return dev;;
     }
 }
 
@@ -172,9 +171,9 @@ Broadlink.prototype.discover = function(){
         var host = rinfo;
         var mac = Buffer.alloc(6,0);
 
-        msg.copy(mac, 0x00, 0x3F);
+        msg.copy(mac, 0x00, 0x3D);
         msg.copy(mac, 0x01, 0x3E);
-        msg.copy(mac, 0x02, 0x3D);
+        msg.copy(mac, 0x02, 0x3F);
         msg.copy(mac, 0x03, 0x3C);
         msg.copy(mac, 0x04, 0x3B);
         msg.copy(mac, 0x05, 0x3A);
@@ -215,6 +214,7 @@ function device( host, mac, timeout=10){
     this.cs.on('listening', function(){
         //this.cs.setBroadcast(true);
     });
+
     this.cs.on("message", (response, rinfo) => {
         var enc_payload = Buffer.alloc(response.length-0x38,0);
         response.copy(enc_payload, 0, 0x38);
@@ -234,7 +234,13 @@ function device( host, mac, timeout=10){
         var command = response[0x26];
         var err = response[0x22] | (response[0x23] << 8);
 
-        if(err != 0) return;
+
+
+        if(err != 0) {
+          // console.log('err', err)
+
+          return;
+        }
 
         if(command == 0xe9){
             this.key = Buffer.alloc(0x10,0);
@@ -243,8 +249,10 @@ function device( host, mac, timeout=10){
             this.id = Buffer.alloc(0x04,0);
             payload.copy(this.id, 0, 0x00, 0x04);
             this.emit("deviceReady");
-        }else if (command == 0xee){
+        }else if (command == 0xee || command == 0xef){
             this.emit("payload", err, payload);
+        } else {
+          console.log('command', command)
         }
 
     });
@@ -303,12 +311,12 @@ device.prototype.sendPacket = function( command, payload){
     packet[0x26] = command;
     packet[0x28] = this.count & 0xff;
     packet[0x29] = this.count >> 8;
-    packet[0x2a] = this.mac[0];
-    packet[0x2b] = this.mac[1];
-    packet[0x2c] = this.mac[2];
-    packet[0x2d] = this.mac[3];
-    packet[0x2e] = this.mac[4];
-    packet[0x2f] = this.mac[5];
+    packet[0x2a] = this.mac[5];
+    packet[0x2b] = this.mac[4];
+    packet[0x2c] = this.mac[3];
+    packet[0x2d] = this.mac[2];
+    packet[0x2e] = this.mac[1];
+    packet[0x2f] = this.mac[0];
     packet[0x30] = this.id[0];
     packet[0x31] = this.id[1];
     packet[0x32] = this.id[2];
@@ -324,6 +332,20 @@ device.prototype.sendPacket = function( command, payload){
     payload = cipher.update(payload);
     var p2 = cipher.final();
 
+
+    var decipher = crypto.createDecipheriv('aes-128-cbc', this.key, this.iv);
+    decipher.setAutoPadding(false);
+
+    // console.log('buffer a', Buffer.from('350bf7fc83abdfb952fa541cb94ed611', 'hex'));
+
+    var decryptedPayload = decipher.update(Buffer.from('350bf7fc83abdfb952fa541cb94ed611', 'hex'));
+    var p3 = decipher.final();
+    if(p3){
+        decryptedPayload = Buffer.concat([decryptedPayload,p3]);
+    }
+
+    // console.log('decryptedPayload', decryptedPayload.toString('hex'))
+
     packet[0x34] = checksum & 0xff;
     packet[0x35] = checksum >> 8;
 
@@ -336,6 +358,8 @@ device.prototype.sendPacket = function( command, payload){
     }
     packet[0x20] = checksum & 0xff;
     packet[0x21] = checksum >> 8;
+
+    // console.log('packet', packet.toString('hex'))
 
     this.cs.sendto(packet, 0, packet.length, this.host.port, this.host.address);
 }
@@ -541,12 +565,32 @@ device.prototype.a1 = function(){
 }
 
 
-device.prototype.rm = function(){
+device.prototype.rm = function(isPlus){
     this.type = "RM2";
     this.checkData = function(){
         var packet = Buffer.alloc(16,0);
         packet[0] = 4;
         this.sendPacket(0x6a, packet);
+    }
+
+    if (isPlus) {
+      this.enterRFSweep = function(){
+          var packet = Buffer.alloc(16,0);
+          packet[0] = 0x19;
+          this.sendPacket(0x6a, packet);
+      }
+
+      this.checkRFData = function(){
+        var packet = Buffer.alloc(16,0);
+        packet[0] = 0x1a;
+        this.sendPacket(0x6a, packet);
+      }
+
+      this.cancelRFSweep = function(){
+          var packet = Buffer.alloc(16,0);
+          packet[0] = 0x1e;
+          this.sendPacket(0x6a, packet);
+      }
     }
 
     this.sendData = function(data){
@@ -569,6 +613,12 @@ device.prototype.rm = function(){
 
     this.on("payload", (err, payload) => {
         var param = payload[0];
+        // console.log('param', param)
+
+
+        var data = Buffer.alloc(payload.length - 4,0);
+        payload.copy(data, 0, 4);
+
         switch (param){
             case 1:
                 var temp = (payload[0x4] * 10 + payload[0x5]) / 10.0;
@@ -578,6 +628,17 @@ device.prototype.rm = function(){
                 var data = Buffer.alloc(payload.length - 4,0);
                 payload.copy(data, 0, 4);
                 this.emit("rawData", data);
+                break;
+            case 26: //get from check_data
+                var data = Buffer.alloc(1,0);
+                payload.copy(data, 0, 0x4);
+                // console.log('payload', payload)
+
+                // console.log('data', data)
+
+                if (data[0] !== 0x1) break;
+
+                this.emit("rawRFData", data);
                 break;
             case 3:
                 break;
