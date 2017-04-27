@@ -586,6 +586,12 @@ device.prototype.rm = function(isPlus){
         this.sendPacket(0x6a, packet);
       }
 
+      this.checkRFData2 = function(){
+        var packet = Buffer.alloc(16,0);
+        packet[0] = 0x1b;
+        this.sendPacket(0x6a, packet);
+      }
+
       this.cancelRFSweep = function(){
           var packet = Buffer.alloc(16,0);
           packet[0] = 0x1e;
@@ -639,6 +645,17 @@ device.prototype.rm = function(isPlus){
                 if (data[0] !== 0x1) break;
 
                 this.emit("rawRFData", data);
+                break;
+            case 27: //get from check_data
+                var data = Buffer.alloc(1,0);
+                payload.copy(data, 0, 0x4);
+                // console.log('payload', payload)
+
+                // console.log('data', data)
+
+                if (data[0] !== 0x1) break;
+
+                this.emit("rawRFData2", data);
                 break;
             case 3:
                 break;
