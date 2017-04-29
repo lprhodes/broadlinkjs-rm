@@ -1,15 +1,15 @@
 {
-  "name": "broadlinkjs",
-  "version": "0.1.0",
-  "description": "A Node.JS library for controlling Broadlink devices",
-  "main": "broadlink.js",
+  "name": "broadlinkrm",
+  "version": "0.2.0",
+  "description": "A Node.JS fork of broadlinkjs specifically intended for interacting with RM devices in homebridge-broadlink-rm",
+  "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/momodalo/broadlinkjs.git"
+    "url": "git+https://github.com/lprhodes/broadlinkjs-rm.git"
   },
   "keywords": [
     "Broadlink",
@@ -20,9 +20,9 @@
   "author": "David Tao",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/momodalo/broadlinkjs/issues"
+    "url": "https://github.com/lprhodes/broadlinkjs-rm/issues"
   },
-  "homepage": "https://github.com/momodalo/broadlinkjs#readme",
+  "homepage": "https://github.com/lprhodes/broadlinkjs-rm#readme",
   "dependencies": {
     "@types/node": "^7.0.5"
   },
