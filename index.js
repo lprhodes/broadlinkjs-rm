@@ -14,6 +14,7 @@ let pro_plus_device_types =
     [ 0x272a // RM2 Pro Plus
     , 0x278b // RM2 Pro Plus BL
     , 0x2787 // RM2 Pro Plus2
+    , 0x279d // RM3 Pro Plus
     ];
 
 let device_types =
@@ -28,6 +29,8 @@ let device_types =
 Broadlink.prototype.genDevice = function (dev_type, address, mac) {
     if (device_types.includes(dev_type)) {
         this.addDevice(mac, address, pro_plus_device_types.includes(dev_type))
+    } else {
+        console.log("[ERROR]broadlinkjs-rm - Unsupported Version: 0x"+dev_type.toString(16));
     }
 }
 
