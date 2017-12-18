@@ -10,120 +10,98 @@ var Broadlink = module.exports = function(){
 }
 util.inherits(Broadlink, EventEmitter);
 
+let pro_plus_device_types =
+    [ 0x272a // RM2 Pro Plus
+    , 0x278b // RM2 Pro Plus BL
+    , 0x2787 // RM2 Pro Plus2
+    , 0x279d // RM3 Pro Plus
+    ];
 
-Broadlink.prototype.genDevice = function (devtype, host, mac){
-    var dev;
-    if(devtype == 0x2712){ // RM2
-        dev = new device(host,mac);
-        dev.rm();
-        return dev;;
-    }else if(devtype == 0x2737){ // RM Mini
-        dev = new device(host,mac);
-        dev.rm();
-        return dev;;
-    }else if(devtype == 0x273d){ // RM Pro Phicomm
-        dev = new device(host,mac);
-        dev.rm();
-        return dev;;
-    }else if(devtype == 0x2783){ // RM2 Home Plus
-        dev = new device(host,mac);
-        dev.rm();
-        return dev;;
-    }else if(devtype == 0x277c){ // RM2 Home Plus GDT
-        dev = new device(host,mac);
-        dev.rm();
-        return dev;;
-    }else if(devtype == 0x272a){ // RM2 Pro Plus
-        dev = new device(host,mac);
-        dev.rm(true);
-        return dev;;
-    }else if(devtype == 0x2787){ // RM2 Pro Plus2
-        dev = new device(host,mac);
-        dev.rm(true);
-        return dev;;
-    }else if(devtype == 0x278b){ // RM2 Pro Plus BL
-        dev = new device(host,mac);
-        dev.rm(true);
-        return dev;;
-    }else if(devtype == 0x278f){ // RM Mini Shate
-        dev = new device(host,mac);
-        dev.rm();
-        return dev;;
-    }else{
-      return null;
+let device_types =
+    [ 0x2712 // RM2
+    , 0x2737 // RM Mini
+    , 0x273d // RM Pro Phicomm
+    , 0x2783 // RM2 Home Plus
+    , 0x277c // RM2 Home Plus GDT
+    , 0x278f // RM Mini Shate
+    ] + pro_plus_device_types;
+
+Broadlink.prototype.genDevice = function (dev_type, address, mac) {
+    if (device_types.includes(dev_type)) {
+        this.addDevice(mac, address, pro_plus_device_types.includes(dev_type))
+    } else {
+        console.log("[ERROR]broadlinkjs-rm - Unsupported Version: 0x"+dev_type.toString(16));
+    }
+}
+
+Broadlink.prototype.addDevice = function(mac, address, isProPlus) {
+    self = this;
+    if (!self.devices) {
+        self.devices = {};
+    }
+    if (!self.devices[mac]) {
+        let host = {address: address, port: 80};
+        let dev = new device(host, mac);
+        dev.rm(isProPlus === true);
+        self.devices[mac] = dev;
+        dev.on("deviceReady", () => { self.emit("deviceReady", dev); });
+        dev.auth();
     }
 }
 
 Broadlink.prototype.discover = function(){
     self = this;
-    var interfaces = os.networkInterfaces();
-    var addresses = [];
-    for (var k in interfaces) {
-        for (var k2 in interfaces[k]) {
-            var address = interfaces[k][k2];
-            if (address.family === 'IPv4' && !address.internal) {
-                addresses.push(address.address);
-            }
-        }
-    }
-    var address = addresses[0].split('.');
+    let interfaces = os.networkInterfaces();
+    let hosts = Object.keys(interfaces)
+        .map((key) => { return interfaces[key]; })
+        .reduce((a, b) => { return a.concat(b); }, [])
+        .filter((host) => { return host.family === 'IPv4' && !host.internal; });
+    let address_split = hosts[0].address.split('.');
 
-    var cs = dgram.createSocket({ type:'udp4', reuseAddr:true});
-    cs.on('listening', function(){
+    var cs = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+    cs.on('listening', function() {
         cs.setBroadcast(true);
-
-        var port = cs.address().port;
-        var now = new Date();
-        var starttime = now.getTime();
-
-        var timezone = now.getTimezoneOffset()/-3600;
-        var packet = Buffer.alloc(0x30,0);
-
-        var year = now.getYear();
-
-        if(timezone < 0){
-            packet[0x08] = 0xff + timezone - 1;
-            packet[0x09] = 0xff;
-            packet[0x0a] = 0xff;
-            packet[0x0b] = 0xff;
-        }else{
-            packet[0x08] = timezone;
-            packet[0x09] = 0;
-            packet[0x0a] = 0;
-            packet[0x0b] = 0;
-        }
+        let port = cs.address().port;
+        let now = new Date();
+        let starttime = now.getTime();
+        let timezone = now.getTimezoneOffset() / -3600;
+        let packet = Buffer.alloc(0x30, 0);
+        let year = now.getYear();
+        let zone_value = timezone < 0 ? 0xff : 0;
+        packet[0x08] = timezone < 0 ? 0xff + timezone - 1 : timezone;
+        packet[0x09] = zone_value;
+        packet[0x0a] = zone_value;
+        packet[0x0b] = zone_value;
         packet[0x0c] = year & 0xff;
         packet[0x0d] = year >> 8;
         packet[0x0e] = now.getMinutes();
         packet[0x0f] = now.getHours();
-        var subyear = year%100;
-        packet[0x10] = subyear;
+        packet[0x10] = year % 100;
         packet[0x11] = now.getDay();
         packet[0x12] = now.getDate();
         packet[0x13] = now.getMonth();
-        packet[0x18] = parseInt(address[0]);
-        packet[0x19] = parseInt(address[1]);
-        packet[0x1a] = parseInt(address[2]);
-        packet[0x1b] = parseInt(address[3]);
+        packet[0x18] = parseInt(address_split[0]);
+        packet[0x19] = parseInt(address_split[1]);
+        packet[0x1a] = parseInt(address_split[2]);
+        packet[0x1b] = parseInt(address_split[3]);
         packet[0x1c] = port & 0xff;
         packet[0x1d] = port >> 8;
         packet[0x26] = 6;
-        var checksum = 0xbeaf;
 
-        for (var i = 0; i < packet.length; i++){
-            checksum += packet[i];
-        }
-        checksum = checksum & 0xffff;
+        let checksum = packet.reduce((sum, value) => { return sum + value; }, 0xbeaf);
         packet[0x20] = checksum & 0xff;
-        packet[0x21] = checksum >> 8;
+        packet[0x21] = (checksum >> 8) & 0xff;
 
-        cs.sendto(packet, 0, packet.length, 80, '255.255.255.255');
-
+        cs.sendto(packet, 0, packet.length, 80, '255.255.255.255', (err) => {
+            if (err) {
+                // console.log(err);
+            }
+        });
     });
 
     cs.on("message", (msg, rinfo) => {
         var host = rinfo;
-        var mac = Buffer.alloc(6,0);
+        var mac = Buffer.alloc(6, 0);
 
         msg.copy(mac, 0x00, 0x3D);
         msg.copy(mac, 0x01, 0x3E);
@@ -132,25 +110,13 @@ Broadlink.prototype.discover = function(){
         msg.copy(mac, 0x04, 0x3B);
         msg.copy(mac, 0x05, 0x3A);
 
-        var devtype = msg[0x34] | msg[0x35] << 8;
-        if(!this.devices){
-            this.devices = {};
-        }
-
-        if(!this.devices[mac]){
-            var dev =  this.genDevice(devtype, host, mac);
-            if (dev) {
-              this.devices[mac] = dev;
-              dev.on("deviceReady", () => { this.emit("deviceReady", dev); });
-              dev.auth();
-            }
-        }
+        this.genDevice(msg[0x34] | msg[0x35] << 8, host.address, mac);
     });
 
     cs.bind();
 }
 
-function device( host, mac, timeout=10){
+function device(host, mac, timeout = 10){
     this.host = host;
     this.mac = mac;
     this.emitter = new EventEmitter();
@@ -160,7 +126,7 @@ function device( host, mac, timeout=10){
     this.removeListener = this.emitter.removeListener;
 
     this.timeout = timeout;
-    this.count = Math.random()&0xffff;
+    this.count = Math.random() & 0xffff;
     this.key = new Buffer([0x09, 0x76, 0x28, 0x34, 0x3f, 0xe9, 0x9e, 0x23, 0x76, 0x5c, 0x15, 0x13, 0xac, 0xcf, 0x8b, 0x02]);
     this.iv = new Buffer([0x56, 0x2e, 0x17, 0x99, 0x6d, 0x09, 0x3d, 0x28, 0xdd, 0xb3, 0xba, 0x69, 0x5a, 0x2e, 0x6f, 0x58]);
     this.id = new Buffer([0, 0, 0, 0]);
@@ -203,10 +169,10 @@ function device( host, mac, timeout=10){
             this.id = Buffer.alloc(0x04,0);
             payload.copy(this.id, 0, 0x00, 0x04);
             this.emit("deviceReady");
-        }else if (command == 0xee || command == 0xef){
+        } else if (command == 0xee || command == 0xef){
             this.emit("payload", err, payload);
         } else {
-          console.log('command', command)
+            console.log('command', command)
         }
 
     });
