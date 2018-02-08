@@ -253,7 +253,7 @@ device.prototype.getType = function(){
     return this.type;
 }
 
-device.prototype.sendPacket = function( command, payload){
+device.prototype.sendPacket = function(command, payload, debug = false){
     this.count = (this.count + 1) & 0xffff;
     var packet = Buffer.alloc(0x38,0);
     packet[0x00] = 0x5a;
@@ -317,9 +317,14 @@ device.prototype.sendPacket = function( command, payload){
     packet[0x20] = checksum & 0xff;
     packet[0x21] = checksum >> 8;
 
-    // console.log('packet', packet.toString('hex'))
+    if (debug) {
+        console.log('packet', packet.toString('hex'))
+    }
 
-    this.cs.sendto(packet, 0, packet.length, this.host.port, this.host.address);
+    this.cs.send(packet, 0, packet.length, this.host.port, this.host.address, (err, bytes) => {
+        if (debug && err) console.log('send packet error', err)
+        if (debug) console.log('sent packet - bytes: ', bytes)
+    });
 }
 
 device.prototype.rm = function(isPlus){
@@ -356,10 +361,10 @@ device.prototype.rm = function(isPlus){
       }
     }
 
-    this.sendData = function(data){
+    this.sendData = function(data, debug = false){
         packet = new Buffer([0x02, 0x00, 0x00, 0x00]);
         packet = Buffer.concat([packet, data]);
-        this.sendPacket(0x6a, packet);
+        this.sendPacket(0x6a, packet, debug);
     }
 
     this.enterLearning = function(){
