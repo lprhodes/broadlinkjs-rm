@@ -141,10 +141,11 @@ Broadlink.prototype.discover = function(){
             this.devices = {};
         }
 
-        if(!this.devices[mac]){
+        var key = mac.toString('hex');
+        if(!this.devices[key]){
             var dev =  this.genDevice(devtype, host, mac);
             if (dev) {
-              this.devices[mac] = dev;
+              this.devices[key] = dev;
               dev.on("deviceReady", () => { this.emit("deviceReady", dev); });
               dev.auth();
             }
