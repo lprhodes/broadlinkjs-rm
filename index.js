@@ -54,7 +54,32 @@ Broadlink.prototype.genDevice = function (devtype, host, mac){
         dev.rm(true);
         return dev;;
     }else{
-      return null;
+        if(devtype == 0){ // SP1
+            return null;;
+        }else if(devtype == 0x2711){ // SP2
+            return null;;
+        }else if(devtype == 0x2719 || devtype == 0x7919 || devtype == 0x271a || devtype == 0x791a){ // Honeywell SP2
+            return null;;
+        }else if(devtype == 0x2720){ // SPMini
+            return null;;
+        }else if(devtype == 0x753e){ // SP3
+            return null;;
+        }else if(devtype == 0x2728){ // SPMini2
+            return null;;
+        }else if(devtype == 0x2733 || devtype == 0x273e){ // OEM branded SPMini
+            return null;;
+        }else if(devtype >= 0x7530 && devtype <= 0x7918){ // OEM branded SPMini2
+            return null;;
+        }else if(devtype == 0x2736){ // SPMiniPlus
+            return null;;
+        }else if(devtype == 0x2714){ // A1
+            return null;;
+        }else if(devtype == 0x4EB5){ // MP1
+            return null;;
+        }
+
+        console.log(`\n\x1b[31m[Important!]\x1b[30m We've discovered an unknown Broadlink device.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${devtype.toString(16)}" so that we can handle it correctly and prevent this message from appearing.\n`);
+        return null;
     }
 }
 
