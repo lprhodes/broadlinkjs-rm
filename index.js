@@ -76,7 +76,13 @@ Broadlink.prototype.genDevice = function (devtype, host, mac){
             return null;;
         }else if(devtype == 0x4EB5){ // MP1
             return null;;
+        }else if(devtype == 0x2722){ // S1 (SmartOne Alarm Kit)
+            return null;;
+        }else if(devtype == 0x4E4D){ // Dooya DT360E (DOOYA_CURTAIN_V2)
+            return null;;
         }
+
+        
 
         console.log(`\n\x1b[31m[Important!]\x1b[30m We've discovered an unknown Broadlink device.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${devtype.toString(16)}" so that we can handle it correctly and prevent this message from appearing.\n`);
         return null;
