@@ -103,7 +103,7 @@ Broadlink.prototype.discover = function(){
             }
         }
     }
-    
+
     addresses.forEach((address) => {
         var originalAddress = address
         
@@ -192,7 +192,7 @@ Broadlink.prototype.discover = function(){
             }
         });
 
-        cs.bind();
+        cs.bind(0, originalAddress);
     })
     
 }
