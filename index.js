@@ -114,7 +114,7 @@ Broadlink.prototype.discover = function(){
             cs.setBroadcast(true);
             var port = cs.address().port;
 
-            console.log(`\x1b[36m[INFO]\x1b[0m Listening for Broadlink devices on ${originalAddress}:${port} (UDP)`)
+            // console.log(`\x1b[36m[INFO]\x1b[0m Listening for Broadlink devices on ${originalAddress}:${port} (UDP)`)
 
             var now = new Date();
             var starttime = now.getTime();
@@ -183,10 +183,11 @@ Broadlink.prototype.discover = function(){
             var key = mac.toString('hex');
             if(!this.devices[key]){
                 var dev =  this.genDevice(devtype, host, mac);
+                this.devices[key] = dev || 'Not Supported';
+
                 if (dev) {
-                this.devices[key] = dev;
-                dev.on("deviceReady", () => { this.emit("deviceReady", dev); });
-                dev.auth();
+                    dev.on("deviceReady", () => { this.emit("deviceReady", dev); });
+                    dev.auth();
                 }
             }
         });
