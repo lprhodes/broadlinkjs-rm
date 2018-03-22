@@ -86,7 +86,7 @@ Broadlink.prototype.genDevice = function (devtype, host, mac){
         
         
 
-        console.log(`\n\x1b[31m[Important!]\x1b[30m We've discovered an unknown Broadlink device.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${devtype.toString(16)}" so that we can handle it correctly and prevent this message from appearing.\n`);
+        console.log(`\n\x1b[31m[Important!]\x1b[0m We've discovered an unknown Broadlink device.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${devtype.toString(16)}" so that we can handle it correctly and prevent this message from appearing.\n`);
         return null;
     }
 }
@@ -103,89 +103,97 @@ Broadlink.prototype.discover = function(){
             }
         }
     }
-    var address = addresses[0].split('.');
+    
+    addresses.forEach((address) => {
+        var originalAddress = address
+        
+        address = address.split('.');
 
-    var cs = dgram.createSocket({ type:'udp4', reuseAddr:true});
-    cs.on('listening', function(){
-        cs.setBroadcast(true);
+        var cs = dgram.createSocket({ type:'udp4', reuseAddr:true});
+        cs.on('listening', function(){
+            cs.setBroadcast(true);
+            var port = cs.address().port;
 
-        var port = cs.address().port;
-        var now = new Date();
-        var starttime = now.getTime();
+            console.log(`\x1b[36m[INFO]\x1b[0m Listening for Broadlink devices on ${originalAddress}:${port} (UDP)`)
 
-        var timezone = now.getTimezoneOffset()/-3600;
-        var packet = Buffer.alloc(0x30,0);
+            var now = new Date();
+            var starttime = now.getTime();
 
-        var year = now.getYear();
+            var timezone = now.getTimezoneOffset()/-3600;
+            var packet = Buffer.alloc(0x30,0);
 
-        if(timezone < 0){
-            packet[0x08] = 0xff + timezone - 1;
-            packet[0x09] = 0xff;
-            packet[0x0a] = 0xff;
-            packet[0x0b] = 0xff;
-        }else{
-            packet[0x08] = timezone;
-            packet[0x09] = 0;
-            packet[0x0a] = 0;
-            packet[0x0b] = 0;
-        }
-        packet[0x0c] = year & 0xff;
-        packet[0x0d] = year >> 8;
-        packet[0x0e] = now.getMinutes();
-        packet[0x0f] = now.getHours();
-        var subyear = year%100;
-        packet[0x10] = subyear;
-        packet[0x11] = now.getDay();
-        packet[0x12] = now.getDate();
-        packet[0x13] = now.getMonth();
-        packet[0x18] = parseInt(address[0]);
-        packet[0x19] = parseInt(address[1]);
-        packet[0x1a] = parseInt(address[2]);
-        packet[0x1b] = parseInt(address[3]);
-        packet[0x1c] = port & 0xff;
-        packet[0x1d] = port >> 8;
-        packet[0x26] = 6;
-        var checksum = 0xbeaf;
+            var year = now.getYear();
 
-        for (var i = 0; i < packet.length; i++){
-            checksum += packet[i];
-        }
-        checksum = checksum & 0xffff;
-        packet[0x20] = checksum & 0xff;
-        packet[0x21] = checksum >> 8;
-
-        cs.sendto(packet, 0, packet.length, 80, '255.255.255.255');
-
-    });
-
-    cs.on("message", (msg, rinfo) => {
-        var host = rinfo;
-        var mac = Buffer.alloc(6,0);
-
-        msg.copy(mac, 0x00, 0x3D);
-        msg.copy(mac, 0x01, 0x3E);
-        msg.copy(mac, 0x02, 0x3F);
-        msg.copy(mac, 0x03, 0x3C);
-        msg.copy(mac, 0x04, 0x3B);
-        msg.copy(mac, 0x05, 0x3A);
-
-        var devtype = msg[0x34] | msg[0x35] << 8;
-        if(!this.devices){
-            this.devices = {};
-        }
-
-        var key = mac.toString('hex');
-        if(!this.devices[key]){
-            var dev =  this.genDevice(devtype, host, mac);
-            if (dev) {
-              this.devices[key] = dev;
-              dev.on("deviceReady", () => { this.emit("deviceReady", dev); });
-              dev.auth();
+            if(timezone < 0){
+                packet[0x08] = 0xff + timezone - 1;
+                packet[0x09] = 0xff;
+                packet[0x0a] = 0xff;
+                packet[0x0b] = 0xff;
+            }else{
+                packet[0x08] = timezone;
+                packet[0x09] = 0;
+                packet[0x0a] = 0;
+                packet[0x0b] = 0;
             }
-        }
-    });
+            packet[0x0c] = year & 0xff;
+            packet[0x0d] = year >> 8;
+            packet[0x0e] = now.getMinutes();
+            packet[0x0f] = now.getHours();
+            var subyear = year%100;
+            packet[0x10] = subyear;
+            packet[0x11] = now.getDay();
+            packet[0x12] = now.getDate();
+            packet[0x13] = now.getMonth();
+            packet[0x18] = parseInt(address[0]);
+            packet[0x19] = parseInt(address[1]);
+            packet[0x1a] = parseInt(address[2]);
+            packet[0x1b] = parseInt(address[3]);
+            packet[0x1c] = port & 0xff;
+            packet[0x1d] = port >> 8;
+            packet[0x26] = 6;
+            var checksum = 0xbeaf;
 
-    cs.bind();
+            for (var i = 0; i < packet.length; i++){
+                checksum += packet[i];
+            }
+            checksum = checksum & 0xffff;
+            packet[0x20] = checksum & 0xff;
+            packet[0x21] = checksum >> 8;
+
+            cs.sendto(packet, 0, packet.length, 80, '255.255.255.255');
+
+        });
+
+        cs.on("message", (msg, rinfo) => {
+            var host = rinfo;
+            var mac = Buffer.alloc(6,0);
+
+            msg.copy(mac, 0x00, 0x3D);
+            msg.copy(mac, 0x01, 0x3E);
+            msg.copy(mac, 0x02, 0x3F);
+            msg.copy(mac, 0x03, 0x3C);
+            msg.copy(mac, 0x04, 0x3B);
+            msg.copy(mac, 0x05, 0x3A);
+
+            var devtype = msg[0x34] | msg[0x35] << 8;
+            if(!this.devices){
+                this.devices = {};
+            }
+
+            var key = mac.toString('hex');
+            if(!this.devices[key]){
+                var dev =  this.genDevice(devtype, host, mac);
+                if (dev) {
+                this.devices[key] = dev;
+                dev.on("deviceReady", () => { this.emit("deviceReady", dev); });
+                dev.auth();
+                }
+            }
+        });
+
+        cs.bind();
+    })
+    
 }
 
 function device( host, mac, timeout=10){
@@ -351,13 +359,11 @@ device.prototype.sendPacket = function(command, payload, debug = false){
     packet[0x20] = checksum & 0xff;
     packet[0x21] = checksum >> 8;
 
-    if (debug) {
-        console.log('packet', packet.toString('hex'))
-    }
+    if (debug) console.log('\x1b[33m[DEBUG]\x1b[0m packet', packet.toString('hex'))
 
     this.cs.send(packet, 0, packet.length, this.host.port, this.host.address, (err, bytes) => {
-        if (debug && err) console.log('send packet error', err)
-        if (debug) console.log('sent packet - bytes: ', bytes)
+        if (debug && err) console.log('\x1b[33m[DEBUG]\x1b[0m send packet error', err)
+        if (debug) console.log('\x1b[33m[DEBUG]\x1b[0m sent packet - bytes: ', bytes)
     });
 }
 
