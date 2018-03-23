@@ -194,7 +194,7 @@ class Broadlink extends EventEmitter {
     // If we don't know anything about the device we ask the user to provide details so that
     // we can handle it correctly.
     if (!rmDeviceTypes.includes(deviceType) && !rmPlusDeviceTypes.includes(deviceType)) {
-      log(`\n\x1b[31m[Important!]\x1b[0m We've discovered an unknown Broadlink device.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${deviceType.toString(16)}" so that we can handle it correctly and prevent this message from appearing.\n`);
+      log(`\n\x1b[35m[Info]\x1b[0m We've discovered an unknown Broadlink device. This likely won't cause any issues.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${deviceType.toString(16)}". The device is connected to your network with the IP address "${host.address}".\n`);
       
       return null;
     }
