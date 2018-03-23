@@ -2,6 +2,7 @@ const EventEmitter = require('events');
 const dgram = require('dgram');
 const os = require('os');
 const crypto = require('crypto');
+const assert = require('assert');
 
 // RM Devices (without RF support)
 const rmDeviceTypes = [
@@ -159,21 +160,20 @@ class Broadlink extends EventEmitter {
     const deviceType = message[0x34] | message[0x35] << 8;
 
     // Create a Device instance
-    const device = this.createDevice(deviceType, host, macAddress);
-    this.devices[key] = device || 'Not Supported';
-
-    // If a device was created then let's authenticate with it
-    // and let others know when it's ready.
-    if (device) {
-      device.on('deviceReady', () => {
-        this.emit('deviceReady', device);
-      });
-
-      device.authenticate();
-    }
+    this.createDevice(host, macAddress, deviceType);
   }
 
-  createDevice (deviceType, host, macAddress) {
+  createDevice (host, macAddress, deviceType) {
+    if (this.devices[macAddress]) return;
+  
+    assert(typeof host === 'object' && (host.port || host.port === 0) && host.address, `createDevice: host should be an object e.g. { address: '192.168.1.32', port: 80 }`);
+    assert(macAddress, `createDevice: A unique macAddress should be provided`);
+    assert(deviceType, `createDevice: A deviceType from the rmDeviceTypes or rmPlusDeviceTypes list should be provided`);
+
+    // Mark is at not supported by default so we don't try to
+    // create this device again.
+    this.devices[macAddress] = 'Not Supported';
+
     // Ignore devices that don't support infrared or RF.
     if (unsupportedDeviceTypes.includes(deviceType)) return null;
     if (deviceType >= 0x7530 && deviceType <= 0x7918) return null; // OEM branded SPMini2
@@ -187,13 +187,21 @@ class Broadlink extends EventEmitter {
     }
     
     // The Broadlink device is something we can use.
-    return new Device(host, macAddress, deviceType)
+    const device = new Device(host, macAddress, deviceType)
+    this.devices[macAddress] = device;
+
+    // Authenticate the device and let others know when it's ready.
+    device.on('deviceReady', () => {
+      this.emit('deviceReady', device);
+    });
+
+    device.authenticate();
   }
 }
 
 class Device {
 
-  constructor (host, macAddress, deviceType) {
+  constructor (host, macAddress, deviceType, port) {
     this.host = host;
     this.mac = macAddress;
     this.emitter = new EventEmitter();
