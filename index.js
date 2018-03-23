@@ -160,10 +160,10 @@ class Broadlink extends EventEmitter {
     const deviceType = message[0x34] | message[0x35] << 8;
 
     // Create a Device instance
-    this.createDevice(host, macAddress, deviceType);
+    this.addDevice(host, macAddress, deviceType);
   }
 
-  createDevice (host, macAddress, deviceType) {
+  addDevice (host, macAddress, deviceType) {
     if (this.devices[macAddress]) return;
   
     assert(typeof host === 'object' && (host.port || host.port === 0) && host.address, `createDevice: host should be an object e.g. { address: '192.168.1.32', port: 80 }`);
