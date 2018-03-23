@@ -1,268 +1,264 @@
-var util = require('util');
-let EventEmitter = require('events');
-let dgram = require('dgram');
-let os = require('os');
-let crypto = require('crypto');
+const EventEmitter = require('events');
+const dgram = require('dgram');
+const os = require('os');
+const crypto = require('crypto');
 
-var Broadlink = module.exports = function(){
-    EventEmitter.call(this);
+// RM Devices (without RF support)
+const rmDeviceTypes = [
+  0x2712, // RM2
+  0x2737, // RM Mini
+  0x273d, // RM Pro Phicomm
+  0x2783, // RM2 Home Plus
+  0x277c, // RM2 Home Plus GDT
+  0x278f, // RM Mini Shate
+];
+
+// RM Devices (with RF support)
+const rmPlusDeviceTypes = [
+  0x272a, // RM2 Pro Plus
+  0x2787, // RM2 Pro Plus2
+  0x278b, // RM2 Pro Plus BL
+  0x279d, // RM3 Pro Plus
+  0x27a9, // RM3 Pro Plus (model RM 3422)
+];
+
+// Known Unsupported Devices
+const unsupportedDeviceTypes = [
+  0,      // SP1
+  0x2711, // SP2
+  0x2719, // Honeywell SP2
+  0x7919, // Honeywell SP2
+  0x271a, // Honeywell SP2
+  0x791a, // Honeywell SP2
+  0x2733, // OEM branded SPMini
+  0x273e, // OEM branded SPMini
+  0x2720, // SPMini
+  0x753e, // SP3
+  0x2728, // SPMini2
+  0x2736, // SPMiniPlus
+  0x2714, // A1
+  0x4EB5, // MP1
+  0x2722, // S1 (SmartOne Alarm Kit)
+  0x4E4D, // Dooya DT360E (DOOYA_CURTAIN_V2)
+  0x4EAD, // Hysen Heating Controller
+];
+
+class Broadlink extends EventEmitter {
+
+  constructor () {
+    super();
+
     this.devices = {};
-}
-util.inherits(Broadlink, EventEmitter);
+  }
 
+  discover () {
+    // Open a UDP socket on each network interface/IP address
+    const ipAddresses = this.getIPAddresses();
 
-Broadlink.prototype.genDevice = function (devtype, host, mac){
-    var dev;
-    if(devtype == 0x2712){ // RM2
-        dev = new device(host,mac);
-        dev.rm();
-        return dev;;
-    }else if(devtype == 0x2737){ // RM Mini
-        dev = new device(host,mac);
-        dev.rm();
-        return dev;;
-    }else if(devtype == 0x273d){ // RM Pro Phicomm
-        dev = new device(host,mac);
-        dev.rm();
-        return dev;;
-    }else if(devtype == 0x2783){ // RM2 Home Plus
-        dev = new device(host,mac);
-        dev.rm();
-        return dev;;
-    }else if(devtype == 0x277c){ // RM2 Home Plus GDT
-        dev = new device(host,mac);
-        dev.rm();
-        return dev;;
-    }else if(devtype == 0x272a){ // RM2 Pro Plus
-        dev = new device(host,mac);
-        dev.rm(true);
-        return dev;;
-    }else if(devtype == 0x2787){ // RM2 Pro Plus2
-        dev = new device(host,mac);
-        dev.rm(true);
-        return dev;;
-    }else if(devtype == 0x278b){ // RM2 Pro Plus BL
-        dev = new device(host,mac);
-        dev.rm(true);
-        return dev;;
-    }else if(devtype == 0x278f){ // RM Mini Shate
-        dev = new device(host,mac);
-        dev.rm();
-        return dev;;
-    }else if(devtype == 0x279d){ // RM3 Pro Plus
-        dev = new device(host,mac);
-        dev.rm(true);
-        return dev;;
-    }else{
-        if(devtype == 0){ // SP1
-            return null;;
-        }else if(devtype == 0x2711){ // SP2
-            return null;;
-        }else if(devtype == 0x2719 || devtype == 0x7919 || devtype == 0x271a || devtype == 0x791a){ // Honeywell SP2
-            return null;;
-        }else if(devtype == 0x2720){ // SPMini
-            return null;;
-        }else if(devtype == 0x753e){ // SP3
-            return null;;
-        }else if(devtype == 0x2728){ // SPMini2
-            return null;;
-        }else if(devtype == 0x2733 || devtype == 0x273e){ // OEM branded SPMini
-            return null;;
-        }else if(devtype >= 0x7530 && devtype <= 0x7918){ // OEM branded SPMini2
-            return null;;
-        }else if(devtype == 0x2736){ // SPMiniPlus
-            return null;;
-        }else if(devtype == 0x2714){ // A1
-            return null;;
-        }else if(devtype == 0x4EB5){ // MP1
-            return null;;
-        }else if(devtype == 0x2722){ // S1 (SmartOne Alarm Kit)
-            return null;;
-        }else if(devtype == 0x4E4D){ // Dooya DT360E (DOOYA_CURTAIN_V2)
-            return null;;
-        }else if(devtype == 0x4EAD){ // Hysen Heating Controller
-            return null;;
-        }
-        
-        
+    ipAddresses.forEach((ipAddress) => {
+      const socket = dgram.createSocket({ type:'udp4', reuseAddr:true });
+      
+      socket.on('listening', this.onListening.bind(this, socket, ipAddress));
+      socket.on('message', this.onMessage.bind(this));
 
-        console.log(`\n\x1b[31m[Important!]\x1b[0m We've discovered an unknown Broadlink device.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${devtype.toString(16)}" so that we can handle it correctly and prevent this message from appearing.\n`);
-        return null;
-    }
-}
-
-Broadlink.prototype.discover = function(){
-    self = this;
-    var interfaces = os.networkInterfaces();
-    var addresses = [];
-    for (var k in interfaces) {
-        for (var k2 in interfaces[k]) {
-            var address = interfaces[k][k2];
-            if (address.family === 'IPv4' && !address.internal) {
-                addresses.push(address.address);
-            }
-        }
-    }
-
-    addresses.forEach((address) => {
-        var originalAddress = address
-        
-        address = address.split('.');
-
-        var cs = dgram.createSocket({ type:'udp4', reuseAddr:true});
-        cs.on('listening', function(){
-            cs.setBroadcast(true);
-            var port = cs.address().port;
-
-            // console.log(`\x1b[36m[INFO]\x1b[0m Listening for Broadlink devices on ${originalAddress}:${port} (UDP)`)
-
-            var now = new Date();
-            var starttime = now.getTime();
-
-            var timezone = now.getTimezoneOffset()/-3600;
-            var packet = Buffer.alloc(0x30,0);
-
-            var year = now.getYear();
-
-            if(timezone < 0){
-                packet[0x08] = 0xff + timezone - 1;
-                packet[0x09] = 0xff;
-                packet[0x0a] = 0xff;
-                packet[0x0b] = 0xff;
-            }else{
-                packet[0x08] = timezone;
-                packet[0x09] = 0;
-                packet[0x0a] = 0;
-                packet[0x0b] = 0;
-            }
-            packet[0x0c] = year & 0xff;
-            packet[0x0d] = year >> 8;
-            packet[0x0e] = now.getMinutes();
-            packet[0x0f] = now.getHours();
-            var subyear = year%100;
-            packet[0x10] = subyear;
-            packet[0x11] = now.getDay();
-            packet[0x12] = now.getDate();
-            packet[0x13] = now.getMonth();
-            packet[0x18] = parseInt(address[0]);
-            packet[0x19] = parseInt(address[1]);
-            packet[0x1a] = parseInt(address[2]);
-            packet[0x1b] = parseInt(address[3]);
-            packet[0x1c] = port & 0xff;
-            packet[0x1d] = port >> 8;
-            packet[0x26] = 6;
-            var checksum = 0xbeaf;
-
-            for (var i = 0; i < packet.length; i++){
-                checksum += packet[i];
-            }
-            checksum = checksum & 0xffff;
-            packet[0x20] = checksum & 0xff;
-            packet[0x21] = checksum >> 8;
-
-            cs.sendto(packet, 0, packet.length, 80, '255.255.255.255');
-
-        });
-
-        cs.on("message", (msg, rinfo) => {
-            var host = rinfo;
-            var mac = Buffer.alloc(6,0);
-
-            msg.copy(mac, 0x00, 0x3D);
-            msg.copy(mac, 0x01, 0x3E);
-            msg.copy(mac, 0x02, 0x3F);
-            msg.copy(mac, 0x03, 0x3C);
-            msg.copy(mac, 0x04, 0x3B);
-            msg.copy(mac, 0x05, 0x3A);
-
-            var devtype = msg[0x34] | msg[0x35] << 8;
-            if(!this.devices){
-                this.devices = {};
-            }
-
-            var key = mac.toString('hex');
-            if(!this.devices[key]){
-                var dev =  this.genDevice(devtype, host, mac);
-                this.devices[key] = dev || 'Not Supported';
-
-                if (dev) {
-                    dev.on("deviceReady", () => { this.emit("deviceReady", dev); });
-                    dev.auth();
-                }
-            }
-        });
-
-        cs.bind(0, originalAddress);
+      socket.bind(0, ipAddress);
     })
+  }
+
+  getIPAddresses () {
+    const interfaces = os.networkInterfaces();
+    const ipAddresses = [];
+
+    Object.keys(interfaces).forEach((interfaceID) => {
+      const currentInterface = interfaces[interfaceID];
+
+      currentInterface.forEach((address) => {
+        if (address.family === 'IPv4' && !address.internal) {
+          ipAddresses.push(address.address);
+        }
+      })
+    })
+
+    return ipAddresses;
+  }
+
+  onListening (socket, ipAddress) {
+    // Broadcase a multicast UDP message to let Broadlink devices know we're listening
+    socket.setBroadcast(true);
+
+    const splitIPAddress = ipAddress.split('.');
+    const port = socket.address().port;
+    // console.log(`\x1b[36m[INFO]\x1b[0m Listening for Broadlink devices on ${ipAddress}:${port} (UDP)`);
+
+    const now = new Date();
+    const starttime = now.getTime();
+
+    const timezone = now.getTimezoneOffset() / -3600;
+    const packet = Buffer.alloc(0x30, 0);
+
+    const year = now.getYear();
+
+    if (timezone < 0) {
+      packet[0x08] = 0xff + timezone - 1;
+      packet[0x09] = 0xff;
+      packet[0x0a] = 0xff;
+      packet[0x0b] = 0xff;
+    } else {
+      packet[0x08] = timezone;
+      packet[0x09] = 0;
+      packet[0x0a] = 0;
+      packet[0x0b] = 0;
+    }
+
+    packet[0x0c] = year & 0xff;
+    packet[0x0d] = year >> 8;
+    packet[0x0e] = now.getMinutes();
+    packet[0x0f] = now.getHours();
     
+    const subyear = year % 100;
+    packet[0x10] = subyear;
+    packet[0x11] = now.getDay();
+    packet[0x12] = now.getDate();
+    packet[0x13] = now.getMonth();
+    packet[0x18] = parseInt(splitIPAddress[0]);
+    packet[0x19] = parseInt(splitIPAddress[1]);
+    packet[0x1a] = parseInt(splitIPAddress[2]);
+    packet[0x1b] = parseInt(splitIPAddress[3]);
+    packet[0x1c] = port & 0xff;
+    packet[0x1d] = port >> 8;
+    packet[0x26] = 6;
+
+    let checksum = 0xbeaf;
+
+    for (let i = 0; i < packet.length; i++) {
+      checksum += packet[i];
+    }
+
+    checksum = checksum & 0xffff;
+    packet[0x20] = checksum & 0xff;
+    packet[0x21] = checksum >> 8;
+
+    socket.sendto(packet, 0, packet.length, 80, '255.255.255.255');
+  }
+
+  onMessage (message, host) {
+    // Broadlink device has responded
+    const macAddress = Buffer.alloc(6, 0);
+
+    message.copy(macAddress, 0x00, 0x3D);
+    message.copy(macAddress, 0x01, 0x3E);
+    message.copy(macAddress, 0x02, 0x3F);
+    message.copy(macAddress, 0x03, 0x3C);
+    message.copy(macAddress, 0x04, 0x3B);
+    message.copy(macAddress, 0x05, 0x3A);
+
+    // Ignore if we already know about this device
+    const key = macAddress.toString('hex');
+    if (this.devices[key]) return;
+
+    const deviceType = message[0x34] | message[0x35] << 8;
+
+    // Create a Device instance
+    const device = this.createDevice(deviceType, host, macAddress);
+    this.devices[key] = device || 'Not Supported';
+
+    // If a device was created then let's authenticate with it
+    // and let others know when it's ready.
+    if (device) {
+      device.on('deviceReady', () => {
+        this.emit('deviceReady', device);
+      });
+
+      device.authenticate();
+    }
+  }
+
+  createDevice (deviceType, host, macAddress) {
+    // Ignore devices that don't support infrared or RF.
+    if (unsupportedDeviceTypes.includes(deviceType)) return null;
+    if (deviceType >= 0x7530 && deviceType <= 0x7918) return null; // OEM branded SPMini2
+
+    // If we don't know anything about the device we ask the user to provide details so that
+    // we can handle it correctly.
+    if (!rmDeviceTypes.includes(deviceType) && !rmPlusDeviceTypes.includes(deviceType)) {
+      console.log(`\n\x1b[31m[Important!]\x1b[0m We've discovered an unknown Broadlink device.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${deviceType.toString(16)}" so that we can handle it correctly and prevent this message from appearing.\n`);
+      
+      return null;
+    }
+    
+    // The Broadlink device is something we can use.
+    return new Device(host, macAddress, deviceType)
+  }
 }
 
-function device( host, mac, timeout=10){
+class Device {
+
+  constructor (host, macAddress, deviceType) {
     this.host = host;
-    this.mac = mac;
+    this.mac = macAddress;
     this.emitter = new EventEmitter();
 
     this.on = this.emitter.on;
     this.emit = this.emitter.emit;
     this.removeListener = this.emitter.removeListener;
 
-    this.timeout = timeout;
-    this.count = Math.random()&0xffff;
+    this.count = Math.random() & 0xffff;
     this.key = new Buffer([0x09, 0x76, 0x28, 0x34, 0x3f, 0xe9, 0x9e, 0x23, 0x76, 0x5c, 0x15, 0x13, 0xac, 0xcf, 0x8b, 0x02]);
     this.iv = new Buffer([0x56, 0x2e, 0x17, 0x99, 0x6d, 0x09, 0x3d, 0x28, 0xdd, 0xb3, 0xba, 0x69, 0x5a, 0x2e, 0x6f, 0x58]);
     this.id = new Buffer([0, 0, 0, 0]);
-    this.cs = dgram.createSocket({ type:'udp4', reuseAddr:true});
-    this.cs.on('listening', function(){
-        //this.cs.setBroadcast(true);
+
+    this.setupSocket();
+
+    // Dynamically add relevant RF methods if the device supports it
+    const isRFSupported = rmPlusDeviceTypes.includes(deviceType);
+    if (isRFSupported) this.addRFSupport();
+  }
+
+  // Create a UDP socket to receive messages from the broadlink device.
+  setupSocket () {
+    const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+    this.socket = socket;
+
+    socket.on('message', (response) => {
+      const encryptedPayload = Buffer.alloc(response.length - 0x38, 0);
+      response.copy(encryptedPayload, 0, 0x38);
+      
+      const err = response[0x22] | (response[0x23] << 8);
+      if (err != 0) return;
+
+      const decipher = crypto.createDecipheriv('aes-128-cbc', this.key, this.iv);
+      decipher.setAutoPadding(false);
+
+      let payload = decipher.update(encryptedPayload);
+
+      const p2 = decipher.final();
+      if (p2) payload = Buffer.concat([payload, p2]);
+
+      if (!payload) return false;
+
+      const command = response[0x26];
+
+      if (command == 0xe9) {
+        this.key = Buffer.alloc(0x10, 0);
+        payload.copy(this.key, 0, 0x04, 0x14);
+
+        this.id = Buffer.alloc(0x04, 0);
+        payload.copy(this.id, 0, 0x00, 0x04);
+
+        this.emit('deviceReady');
+      } else if (command == 0xee || command == 0xef) {
+        this.onPayloadReceived(err, payload);
+      } else {
+        console.log('Unhandled Command: ', command)
+      }
     });
 
-    this.cs.on("message", (response, rinfo) => {
-        var enc_payload = Buffer.alloc(response.length-0x38,0);
-        response.copy(enc_payload, 0, 0x38);
+    socket.bind();
+  }
 
-        var decipher = crypto.createDecipheriv('aes-128-cbc', this.key, this.iv);
-        decipher.setAutoPadding(false);
-        var payload = decipher.update(enc_payload);
-        var p2 = decipher.final();
-        if(p2){
-            payload = Buffer.concat([payload,p2]);
-        }
+  authenticate () {
+    const payload = Buffer.alloc(0x50, 0);
 
-        if(!payload){
-            return false;
-        }
-
-        var command = response[0x26];
-        var err = response[0x22] | (response[0x23] << 8);
-
-
-
-        if(err != 0) {
-          // console.log('err', err)
-
-          return;
-        }
-
-        if(command == 0xe9){
-            this.key = Buffer.alloc(0x10,0);
-            payload.copy(this.key, 0, 0x04, 0x14);
-
-            this.id = Buffer.alloc(0x04,0);
-            payload.copy(this.id, 0, 0x00, 0x04);
-            this.emit("deviceReady");
-        }else if (command == 0xee || command == 0xef){
-            this.emit("payload", err, payload);
-        } else {
-          console.log('command', command)
-        }
-
-    });
-    this.cs.bind();
-    this.type = "Unknown";
-}
-
-device.prototype.auth = function(){
-    var payload = Buffer.alloc(0x50,0);
     payload[0x04] = 0x31;
     payload[0x05] = 0x31;
     payload[0x06] = 0x31;
@@ -289,16 +285,15 @@ device.prototype.auth = function(){
     payload[0x36] = '1'.charCodeAt(0);
 
     this.sendPacket(0x65, payload);
+  }
 
-}
+  sendPacket (command, payload, debug = false) {
+    const { socket } = this;
 
-device.prototype.getType = function(){
-    return this.type;
-}
-
-device.prototype.sendPacket = function(command, payload, debug = false){
     this.count = (this.count + 1) & 0xffff;
-    var packet = Buffer.alloc(0x38,0);
+
+    let packet = Buffer.alloc(0x38, 0);
+
     packet[0x00] = 0x5a;
     packet[0x01] = 0xa5;
     packet[0x02] = 0xaa;
@@ -323,147 +318,122 @@ device.prototype.sendPacket = function(command, payload, debug = false){
     packet[0x32] = this.id[2];
     packet[0x33] = this.id[3];
 
-    var checksum = 0xbeaf;
-    for (var i = 0 ; i < payload.length; i++){
-        checksum += payload[i];
-        checksum = checksum & 0xffff;
+    let checksum = 0xbeaf;
+    for (let i = 0 ; i < payload.length; i++) {
+      checksum += payload[i];
+      checksum = checksum & 0xffff;
     }
 
-    var cipher = crypto.createCipheriv('aes-128-cbc', this.key, this.iv);
+    const cipher = crypto.createCipheriv('aes-128-cbc', this.key, this.iv);
     payload = cipher.update(payload);
-    var p2 = cipher.final();
-
-
-    var decipher = crypto.createDecipheriv('aes-128-cbc', this.key, this.iv);
-    decipher.setAutoPadding(false);
-
-    // console.log('buffer a', Buffer.from('350bf7fc83abdfb952fa541cb94ed611', 'hex'));
-
-    var decryptedPayload = decipher.update(Buffer.from('350bf7fc83abdfb952fa541cb94ed611', 'hex'));
-    var p3 = decipher.final();
-    if(p3){
-        decryptedPayload = Buffer.concat([decryptedPayload,p3]);
-    }
-
-    // console.log('decryptedPayload', decryptedPayload.toString('hex'))
-
+    
     packet[0x34] = checksum & 0xff;
     packet[0x35] = checksum >> 8;
 
     packet = Buffer.concat([packet, payload]);
 
     checksum = 0xbeaf;
-    for (var i = 0 ; i < packet.length; i++){
-        checksum += packet[i];
-        checksum = checksum & 0xffff;
+    for (let i = 0 ; i < packet.length; i++) {
+      checksum += packet[i];
+      checksum = checksum & 0xffff;
     }
     packet[0x20] = checksum & 0xff;
     packet[0x21] = checksum >> 8;
 
     if (debug) console.log('\x1b[33m[DEBUG]\x1b[0m packet', packet.toString('hex'))
 
-    this.cs.send(packet, 0, packet.length, this.host.port, this.host.address, (err, bytes) => {
-        if (debug && err) console.log('\x1b[33m[DEBUG]\x1b[0m send packet error', err)
-        if (debug) console.log('\x1b[33m[DEBUG]\x1b[0m sent packet - bytes: ', bytes)
+    socket.send(packet, 0, packet.length, this.host.port, this.host.address, (err, bytes) => {
+      if (debug && err) console.log('\x1b[33m[DEBUG]\x1b[0m send packet error', err)
+      if (debug) console.log('\x1b[33m[DEBUG]\x1b[0m sent packet - bytes: ', bytes)
     });
-}
+  }
 
-device.prototype.rm = function(isPlus){
-    this.type = "RM2";
-    this.checkData = function(){
-        var packet = Buffer.alloc(16,0);
-        packet[0] = 4;
-        this.sendPacket(0x6a, packet);
-    }
+  onPayloadReceived (err, payload) {
+    const param = payload[0];
 
-    if (isPlus) {
-      this.enterRFSweep = function(){
-          var packet = Buffer.alloc(16,0);
-          packet[0] = 0x19;
-          this.sendPacket(0x6a, packet);
+    const data = Buffer.alloc(payload.length - 4, 0);
+    payload.copy(data, 0, 4);
+
+    switch (param) {
+      case 1: {
+        const temp = (payload[0x4] * 10 + payload[0x5]) / 10.0;
+        this.emit('temperature', temp);
+        break;
       }
-
-      this.checkRFData = function(){
-        var packet = Buffer.alloc(16,0);
-        packet[0] = 0x1a;
-        this.sendPacket(0x6a, packet);
-      }
-
-      this.checkRFData2 = function(){
-        var packet = Buffer.alloc(16,0);
-        packet[0] = 0x1b;
-        this.sendPacket(0x6a, packet);
-      }
-
-      this.cancelRFSweep = function(){
-          var packet = Buffer.alloc(16,0);
-          packet[0] = 0x1e;
-          this.sendPacket(0x6a, packet);
-      }
-    }
-
-    this.sendData = function(data, debug = false){
-        packet = new Buffer([0x02, 0x00, 0x00, 0x00]);
-        packet = Buffer.concat([packet, data]);
-        this.sendPacket(0x6a, packet, debug);
-    }
-
-    this.enterLearning = function(){
-        var packet = Buffer.alloc(16,0);
-        packet[0] = 3;
-        this.sendPacket(0x6a, packet);
-    }
-
-    this.checkTemperature = function(){
-        var packet = Buffer.alloc(16,0);
-        packet[0] = 1;
-        this.sendPacket(0x6a, packet);
-    }
-
-    this.on("payload", (err, payload) => {
-        var param = payload[0];
-        // console.log('param', param)
-
-
-        var data = Buffer.alloc(payload.length - 4,0);
+      case 4: { //get from check_data
+        const data = Buffer.alloc(payload.length - 4, 0);
         payload.copy(data, 0, 4);
+        this.emit('rawData', data);
+        break;
+      }
+      case 26: { //get from check_data
+        const data = Buffer.alloc(1, 0);
+        payload.copy(data, 0, 0x4);
+        if (data[0] !== 0x1) break;
+        this.emit('rawRFData', data);
+        break;
+      }
+      case 27: { //get from check_data
+        const data = Buffer.alloc(1, 0);
+        payload.copy(data, 0, 0x4);
+        if (data[0] !== 0x1) break;
+        this.emit('rawRFData2', data);
+        break;
+      }
+    }
+  }
 
-        switch (param){
-            case 1:
-                var temp = (payload[0x4] * 10 + payload[0x5]) / 10.0;
-                this.emit("temperature", temp);
-                break;
-            case 4: //get from check_data
-                var data = Buffer.alloc(payload.length - 4,0);
-                payload.copy(data, 0, 4);
-                this.emit("rawData", data);
-                break;
-            case 26: //get from check_data
-                var data = Buffer.alloc(1,0);
-                payload.copy(data, 0, 0x4);
-                // console.log('payload', payload)
+  // Externally Accessed Methods
 
-                // console.log('data', data)
+  checkData () {
+    const packet = Buffer.alloc(16, 0);
+    packet[0] = 4;
+    this.sendPacket(0x6a, packet);
+  }
 
-                if (data[0] !== 0x1) break;
+  sendData (data, debug = false) {
+    let packet = new Buffer([0x02, 0x00, 0x00, 0x00]);
+    packet = Buffer.concat([packet, data]);
+    this.sendPacket(0x6a, packet, debug);
+  }
 
-                this.emit("rawRFData", data);
-                break;
-            case 27: //get from check_data
-                var data = Buffer.alloc(1,0);
-                payload.copy(data, 0, 0x4);
-                // console.log('payload', payload)
+  enterLearning () {
+    let packet = Buffer.alloc(16, 0);
+    packet[0] = 3;
+    this.sendPacket(0x6a, packet);
+  }
 
-                // console.log('data', data)
+  checkTemperature () {
+    let packet = Buffer.alloc(16, 0);
+    packet[0] = 1;
+    this.sendPacket(0x6a, packet);
+  }
 
-                if (data[0] !== 0x1) break;
+  addRFSupport () {
+    this.enterRFSweep = () => {
+      const packet = Buffer.alloc(16, 0);
+      packet[0] = 0x19;
+      this.sendPacket(0x6a, packet);
+    }
 
-                this.emit("rawRFData2", data);
-                break;
-            case 3:
-                break;
-            case 4:
-                break;
-        }
-    });
+    this.checkRFData = () => {
+      const packet = Buffer.alloc(16, 0);
+      packet[0] = 0x1a;
+      this.sendPacket(0x6a, packet);
+    }
+
+    this.checkRFData2 = () => {
+      const packet = Buffer.alloc(16, 0);
+      packet[0] = 0x1b;
+      this.sendPacket(0x6a, packet);
+    }
+
+    this.cancelRFSweep = () => {
+      const packet = Buffer.alloc(16, 0);
+      packet[0] = 0x1e;
+      this.sendPacket(0x6a, packet);
+    }
+  }
 }
+
+module.exports = Broadlink;
