@@ -52,10 +52,7 @@ class Broadlink extends EventEmitter {
     this.devices = {};
   }
 
-  discover (log, debug) {
-    this.log = log;
-    this.debug = debug;
-
+  discover () {
     // Open a UDP socket on each network interface/IP address
     const ipAddresses = this.getIPAddresses();
 
@@ -170,6 +167,7 @@ class Broadlink extends EventEmitter {
 
   addDevice (host, macAddress, deviceType) {
     const { log, debug } = this;
+
     if (this.devices[macAddress]) return;
   
     assert(typeof host === 'object' && (host.port || host.port === 0) && host.address, `createDevice: host should be an object e.g. { address: '192.168.1.32', port: 80 }`);
@@ -307,7 +305,6 @@ class Device {
 
   sendPacket (command, payload, debug = false) {
     const { log, socket } = this;
-
     this.count = (this.count + 1) & 0xffff;
 
     let packet = Buffer.alloc(0x38, 0);
@@ -362,7 +359,7 @@ class Device {
 
     socket.send(packet, 0, packet.length, this.host.port, this.host.address, (err, bytes) => {
       if (debug && err) log('\x1b[33m[DEBUG]\x1b[0m send packet error', err)
-      if (debug) log('\x1b[33m[DEBUG]\x1b[0m sent packet - bytes: ', bytes)
+      if (debug) log('\x1b[33m[DEBUG]\x1b[0m successfuly sent packet - bytes: ', bytes)
     });
   }
 
