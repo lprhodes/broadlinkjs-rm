@@ -53,6 +53,10 @@ Broadlink.prototype.genDevice = function (devtype, host, mac){
         dev = new device(host,mac);
         dev.rm(true);
         return dev;;
+    }else if(devtype == 0x27a9){ // RM3 Pro Plus (model RM 3422)
+        dev = new device(host,mac);
+        dev.rm(true);
+        return dev;;
     }else{
         if(devtype == 0){ // SP1
             return null;;
