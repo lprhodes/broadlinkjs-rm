@@ -50,14 +50,23 @@ class Broadlink extends EventEmitter {
     super();
 
     this.devices = {};
+    this.sockets = [];
   }
 
   discover () {
+    // Close existing sockets
+    this.sockets.forEach((socket) => {
+      socket.close();
+    })
+
+    this.sockets = [];
+
     // Open a UDP socket on each network interface/IP address
     const ipAddresses = this.getIPAddresses();
 
     ipAddresses.forEach((ipAddress) => {
       const socket = dgram.createSocket({ type:'udp4', reuseAddr:true });
+      this.sockets.push(socket)
       
       socket.on('listening', this.onListening.bind(this, socket, ipAddress));
       socket.on('message', this.onMessage.bind(this));
