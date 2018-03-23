@@ -52,7 +52,10 @@ class Broadlink extends EventEmitter {
     this.devices = {};
   }
 
-  discover () {
+  discover (log, debug) {
+    this.log = log;
+    this.debug = debug;
+
     // Open a UDP socket on each network interface/IP address
     const ipAddresses = this.getIPAddresses();
 
@@ -84,12 +87,14 @@ class Broadlink extends EventEmitter {
   }
 
   onListening (socket, ipAddress) {
+    const { debug, log } = this;
+
     // Broadcase a multicast UDP message to let Broadlink devices know we're listening
     socket.setBroadcast(true);
 
     const splitIPAddress = ipAddress.split('.');
     const port = socket.address().port;
-    // console.log(`\x1b[36m[INFO]\x1b[0m Listening for Broadlink devices on ${ipAddress}:${port} (UDP)`);
+    if (debug && log) log(`\x1b[35m[INFO]\x1b[0m Listening for Broadlink devices on ${ipAddress}:${port} (UDP)`);
 
     const now = new Date();
     const starttime = now.getTime();
@@ -164,6 +169,7 @@ class Broadlink extends EventEmitter {
   }
 
   addDevice (host, macAddress, deviceType) {
+    const { log, debug } = this;
     if (this.devices[macAddress]) return;
   
     assert(typeof host === 'object' && (host.port || host.port === 0) && host.address, `createDevice: host should be an object e.g. { address: '192.168.1.32', port: 80 }`);
@@ -181,13 +187,16 @@ class Broadlink extends EventEmitter {
     // If we don't know anything about the device we ask the user to provide details so that
     // we can handle it correctly.
     if (!rmDeviceTypes.includes(deviceType) && !rmPlusDeviceTypes.includes(deviceType)) {
-      console.log(`\n\x1b[31m[Important!]\x1b[0m We've discovered an unknown Broadlink device.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${deviceType.toString(16)}" so that we can handle it correctly and prevent this message from appearing.\n`);
+      log(`\n\x1b[31m[Important!]\x1b[0m We've discovered an unknown Broadlink device.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${deviceType.toString(16)}" so that we can handle it correctly and prevent this message from appearing.\n`);
       
       return null;
     }
     
     // The Broadlink device is something we can use.
     const device = new Device(host, macAddress, deviceType)
+    device.log = log;
+    device.debug = debug;
+
     this.devices[macAddress] = device;
 
     // Authenticate the device and let others know when it's ready.
@@ -205,6 +214,7 @@ class Device {
     this.host = host;
     this.mac = macAddress;
     this.emitter = new EventEmitter();
+    this.log = console.log;
 
     this.on = this.emitter.on;
     this.emit = this.emitter.emit;
@@ -296,7 +306,7 @@ class Device {
   }
 
   sendPacket (command, payload, debug = false) {
-    const { socket } = this;
+    const { log, socket } = this;
 
     this.count = (this.count + 1) & 0xffff;
 
@@ -348,11 +358,11 @@ class Device {
     packet[0x20] = checksum & 0xff;
     packet[0x21] = checksum >> 8;
 
-    if (debug) console.log('\x1b[33m[DEBUG]\x1b[0m packet', packet.toString('hex'))
+    if (debug) log('\x1b[33m[DEBUG]\x1b[0m packet', packet.toString('hex'))
 
     socket.send(packet, 0, packet.length, this.host.port, this.host.address, (err, bytes) => {
-      if (debug && err) console.log('\x1b[33m[DEBUG]\x1b[0m send packet error', err)
-      if (debug) console.log('\x1b[33m[DEBUG]\x1b[0m sent packet - bytes: ', bytes)
+      if (debug && err) log('\x1b[33m[DEBUG]\x1b[0m send packet error', err)
+      if (debug) log('\x1b[33m[DEBUG]\x1b[0m sent packet - bytes: ', bytes)
     });
   }
 
