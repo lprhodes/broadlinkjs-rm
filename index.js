@@ -5,44 +5,41 @@ const crypto = require('crypto');
 const assert = require('assert');
 
 // RM Devices (without RF support)
-const rmDeviceTypes = [
-  0x2712, // RM2
-  0x2737, // RM Mini
-  0x273d, // RM Pro Phicomm
-  0x2783, // RM2 Home Plus
-  0x277c, // RM2 Home Plus GDT
-  0x278f, // RM Mini Shate
-];
+const rmDeviceTypes = {};
+rmDeviceTypes[parseInt(0x2737, 16)] = 'Broadlink RM Mini';
+rmDeviceTypes[parseInt(0x273d, 16)] = 'Broadlink RM Pro Phicomm';
+rmDeviceTypes[parseInt(0x2712, 16)] = 'Broadlink RM2';
+rmDeviceTypes[parseInt(0x2783, 16)] = 'Broadlink RM2 Home Plus';
+rmDeviceTypes[parseInt(0x277c, 16)] = 'Broadlink RM2 Home Plus GDT';
+rmDeviceTypes[parseInt(0x278f, 16)] = 'Broadlink RM Mini Shate';
 
 // RM Devices (with RF support)
-const rmPlusDeviceTypes = [
-  0x272a, // RM2 Pro Plus
-  0x2787, // RM2 Pro Plus2
-  0x278b, // RM2 Pro Plus BL
-  0x279d, // RM3 Pro Plus
-  0x27a9, // RM3 Pro Plus (model RM 3422)
-];
+const rmPlusDeviceTypes = {};
+rmPlusDeviceTypes[parseInt(0x272a, 16)] = 'Broadlink RM2 Pro Plus';
+rmPlusDeviceTypes[parseInt(0x2787, 16)] = 'Broadlink RM2 Pro Plus v2';
+rmPlusDeviceTypes[parseInt(0x278b, 16)] = 'Broadlink RM2 Pro Plus BL';
+rmPlusDeviceTypes[parseInt(0x279d, 16)] = 'Broadlink RM3 Pro Plus';
+rmPlusDeviceTypes[parseInt(0x27a9, 16)] = 'Broadlink RM3 Pro Plus v2'; // (model RM 3422)
 
 // Known Unsupported Devices
-const unsupportedDeviceTypes = [
-  0,      // SP1
-  0x2711, // SP2
-  0x2719, // Honeywell SP2
-  0x7919, // Honeywell SP2
-  0x271a, // Honeywell SP2
-  0x791a, // Honeywell SP2
-  0x2733, // OEM branded SPMini
-  0x273e, // OEM branded SPMini
-  0x2720, // SPMini
-  0x753e, // SP3
-  0x2728, // SPMini2
-  0x2736, // SPMiniPlus
-  0x2714, // A1
-  0x4EB5, // MP1
-  0x2722, // S1 (SmartOne Alarm Kit)
-  0x4E4D, // Dooya DT360E (DOOYA_CURTAIN_V2)
-  0x4EAD, // Hysen Heating Controller
-];
+const unsupportedDeviceTypes = {};
+unsupportedDeviceTypes[parseInt(0, 16)] = 'Broadlink SP1';
+unsupportedDeviceTypes[parseInt(0x2711, 16)] = 'Broadlink SP2';
+unsupportedDeviceTypes[parseInt(0x2719, 16)] = 'Honeywell SP2';
+unsupportedDeviceTypes[parseInt(0x7919, 16)] = 'Honeywell SP2';
+unsupportedDeviceTypes[parseInt(0x271a, 16)] = 'Honeywell SP2';
+unsupportedDeviceTypes[parseInt(0x791a, 16)] = 'Honeywell SP2';
+unsupportedDeviceTypes[parseInt(0x2733, 16)] = 'OEM Branded SP Mini';
+unsupportedDeviceTypes[parseInt(0x273e, 16)] = 'OEM Branded SP Mini';
+unsupportedDeviceTypes[parseInt(0x2720, 16)] = 'Broadlink SP Mini';
+unsupportedDeviceTypes[parseInt(0x753e, 16)] = 'Broadlink SP 3';
+unsupportedDeviceTypes[parseInt(0x2728, 16)] = 'Broadlink SPMini 2';
+unsupportedDeviceTypes[parseInt(0x2736, 16)] = 'Broadlink SPMini Plus';
+unsupportedDeviceTypes[parseInt(0x2714, 16)] = 'Broadlink A1';
+unsupportedDeviceTypes[parseInt(0x4EB5, 16)] = 'Broadlink MP1';
+unsupportedDeviceTypes[parseInt(0x2722, 16)] = 'Broadlink S1 (SmartOne Alarm Kit)';
+unsupportedDeviceTypes[parseInt(0x4E4D, 16)] = 'Dooya DT360E (DOOYA_CURTAIN_V2) or Hysen Heating Controller';
+
 
 class Broadlink extends EventEmitter {
 
@@ -188,12 +185,12 @@ class Broadlink extends EventEmitter {
     this.devices[macAddress] = 'Not Supported';
 
     // Ignore devices that don't support infrared or RF.
-    if (unsupportedDeviceTypes.includes(deviceType)) return null;
+    if (unsupportedDeviceTypes[parseInt(deviceType, 16)]) return null;
     if (deviceType >= 0x7530 && deviceType <= 0x7918) return null; // OEM branded SPMini2
 
     // If we don't know anything about the device we ask the user to provide details so that
     // we can handle it correctly.
-    if (!rmDeviceTypes.includes(deviceType) && !rmPlusDeviceTypes.includes(deviceType)) {
+    if (!rmDeviceTypes[parseInt(deviceType, 16)] && !rmPlusDeviceTypes[parseInt(deviceType, 16)]) {
       log(`\n\x1b[35m[Info]\x1b[0m We've discovered an unknown Broadlink device. This likely won't cause any issues.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${deviceType.toString(16)}". The device is connected to your network with the IP address "${host.address}".\n`);
       
       return null;
@@ -223,6 +220,7 @@ class Device {
     this.emitter = new EventEmitter();
     this.log = console.log;
     this.type = deviceType;
+    this.model = rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)];
 
     this.on = this.emitter.on;
     this.emit = this.emitter.emit;
@@ -236,7 +234,7 @@ class Device {
     this.setupSocket();
 
     // Dynamically add relevant RF methods if the device supports it
-    const isRFSupported = rmPlusDeviceTypes.includes(deviceType);
+    const isRFSupported = rmPlusDeviceTypes[parseInt(deviceType, 16)];
     if (isRFSupported) this.addRFSupport();
   }
 
