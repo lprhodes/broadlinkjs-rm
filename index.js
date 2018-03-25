@@ -222,6 +222,7 @@ class Device {
     this.mac = macAddress;
     this.emitter = new EventEmitter();
     this.log = console.log;
+    this.type = deviceType;
 
     this.on = this.emitter.on;
     this.emit = this.emitter.emit;
@@ -433,6 +434,12 @@ class Device {
     this.sendPacket(0x6a, packet);
   }
 
+  cancelLearn() {
+    const packet = Buffer.alloc(16, 0);
+    packet[0] = 0x1e;
+    this.sendPacket(0x6a, packet);
+  }
+
   addRFSupport () {
     this.enterRFSweep = () => {
       const packet = Buffer.alloc(16, 0);
@@ -449,12 +456,6 @@ class Device {
     this.checkRFData2 = () => {
       const packet = Buffer.alloc(16, 0);
       packet[0] = 0x1b;
-      this.sendPacket(0x6a, packet);
-    }
-
-    this.cancelRFSweep = () => {
-      const packet = Buffer.alloc(16, 0);
-      packet[0] = 0x1e;
       this.sendPacket(0x6a, packet);
     }
   }
