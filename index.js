@@ -44,14 +44,14 @@ unsupportedDeviceTypes[parseInt(0x4E4D, 16)] = 'Dooya DT360E (DOOYA_CURTAIN_V2) 
 
 class Broadlink extends EventEmitter {
 
-  constructor () {
+  constructor() {
     super();
 
     this.devices = {};
     this.sockets = [];
   }
 
-  discover () {
+  discover() {
     // Close existing sockets
     this.sockets.forEach((socket) => {
       socket.close();
@@ -70,10 +70,10 @@ class Broadlink extends EventEmitter {
       socket.on('message', this.onMessage.bind(this));
 
       socket.bind(0, ipAddress);
-    })
+    });
   }
 
-  getIPAddresses () {
+  getIPAddresses() {
     const interfaces = os.networkInterfaces();
     const ipAddresses = [];
 
@@ -85,7 +85,7 @@ class Broadlink extends EventEmitter {
           ipAddresses.push(address.address);
         }
       })
-    })
+    });
 
     return ipAddresses;
   }
@@ -166,7 +166,7 @@ class Broadlink extends EventEmitter {
     const key = macAddress.toString('hex');
     if (this.devices[key]) return;
 
-    const deviceType = message[0x34] | message[0x35] << 8;
+    const deviceType = message[0x34] | (message[0x35] << 8);
 
     // Create a Device instance
     this.addDevice(host, macAddress, deviceType);
@@ -177,7 +177,13 @@ class Broadlink extends EventEmitter {
 
     if (this.devices[macAddress]) return;
   
-    assert(typeof host === 'object' && (host.port || host.port === 0) && host.address, `createDevice: host should be an object e.g. { address: '192.168.1.32', port: 80 }`);
+    const isHostObjectValid = (
+      typeof host === 'object' &&
+      (host.port || host.port === 0) &&
+      host.address
+    );
+
+    assert(isHostObjectValid, `createDevice: host should be an object e.g. { address: '192.168.1.32', port: 80 }`);
     assert(macAddress, `createDevice: A unique macAddress should be provided`);
     assert(deviceType, `createDevice: A deviceType from the rmDeviceTypes or rmPlusDeviceTypes list should be provided`);
 
@@ -191,7 +197,9 @@ class Broadlink extends EventEmitter {
 
     // If we don't know anything about the device we ask the user to provide details so that
     // we can handle it correctly.
-    if (!rmDeviceTypes[parseInt(deviceType, 16)] && !rmPlusDeviceTypes[parseInt(deviceType, 16)]) {
+    const isKnownDevice = (rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)])
+
+    if (!isKnownDevice) {
       log(`\n\x1b[35m[Info]\x1b[0m We've discovered an unknown Broadlink device. This likely won't cause any issues.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${deviceType.toString(16)}". The device is connected to your network with the IP address "${host.address}".\n`);
       
       return null;
@@ -240,7 +248,7 @@ class Device {
   }
 
   // Create a UDP socket to receive messages from the broadlink device.
-  setupSocket () {
+  setupSocket() {
     const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
     this.socket = socket;
 
@@ -274,14 +282,14 @@ class Device {
       } else if (command == 0xee || command == 0xef) {
         this.onPayloadReceived(err, payload);
       } else {
-        console.log('Unhandled Command: ', command)
+        console.log('Unhandled Command: ', command);
       }
     });
 
     socket.bind();
   }
 
-  authenticate () {
+  authenticate() {
     const payload = Buffer.alloc(0x50, 0);
 
     payload[0x04] = 0x31;
@@ -343,21 +351,21 @@ class Device {
     packet[0x33] = this.id[3];
 
     let checksum = 0xbeaf;
-    for (let i = 0 ; i < payload.length; i++) {
+    for (let i = 0; i < payload.length; i++) {
       checksum += payload[i];
       checksum = checksum & 0xffff;
     }
 
     const cipher = crypto.createCipheriv('aes-128-cbc', this.key, this.iv);
     payload = cipher.update(payload);
-    
+
     packet[0x34] = checksum & 0xff;
     packet[0x35] = checksum >> 8;
 
     packet = Buffer.concat([packet, payload]);
 
     checksum = 0xbeaf;
-    for (let i = 0 ; i < packet.length; i++) {
+    for (let i = 0; i < packet.length; i++) {
       checksum += packet[i];
       checksum = checksum & 0xffff;
     }
@@ -409,7 +417,7 @@ class Device {
 
   // Externally Accessed Methods
 
-  checkData () {
+  checkData() {
     const packet = Buffer.alloc(16, 0);
     packet[0] = 4;
     this.sendPacket(0x6a, packet);
@@ -421,13 +429,13 @@ class Device {
     this.sendPacket(0x6a, packet, debug);
   }
 
-  enterLearning () {
+  enterLearning() {
     let packet = Buffer.alloc(16, 0);
     packet[0] = 3;
     this.sendPacket(0x6a, packet);
   }
 
-  checkTemperature () {
+  checkTemperature() {
     let packet = Buffer.alloc(16, 0);
     packet[0] = 1;
     this.sendPacket(0x6a, packet);
@@ -439,7 +447,7 @@ class Device {
     this.sendPacket(0x6a, packet);
   }
 
-  addRFSupport () {
+  addRFSupport() {
     this.enterRFSweep = () => {
       const packet = Buffer.alloc(16, 0);
       packet[0] = 0x19;
