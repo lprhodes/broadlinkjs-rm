@@ -39,6 +39,7 @@ unsupportedDeviceTypes[parseInt(0x791a, 16)] = 'Honeywell SP2';
 unsupportedDeviceTypes[parseInt(0x2733, 16)] = 'OEM Branded SP Mini';
 unsupportedDeviceTypes[parseInt(0x273e, 16)] = 'OEM Branded SP Mini';
 unsupportedDeviceTypes[parseInt(0x2720, 16)] = 'Broadlink SP Mini';
+unsupportedDeviceTypes[parseInt(0x7d07, 16)] = 'Broadlink SP Mini';
 unsupportedDeviceTypes[parseInt(0x753e, 16)] = 'Broadlink SP 3';
 unsupportedDeviceTypes[parseInt(0x2728, 16)] = 'Broadlink SPMini 2';
 unsupportedDeviceTypes[parseInt(0x2736, 16)] = 'Broadlink SPMini Plus';
