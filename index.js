@@ -22,6 +22,9 @@ const rmPlusDeviceTypes = {};
 rmPlusDeviceTypes[parseInt(0x272a, 16)] = 'Broadlink RM2 Pro Plus';
 rmPlusDeviceTypes[parseInt(0x2787, 16)] = 'Broadlink RM2 Pro Plus v2';
 rmPlusDeviceTypes[parseInt(0x278b, 16)] = 'Broadlink RM2 Pro Plus BL';
+rmPlusDeviceTypes[parseInt(0x2797, 16)] = 'Broadlink RM2 Pro Plus HYC';
+rmPlusDeviceTypes[parseInt(0x27a1, 16)] = 'Broadlink RM2 Pro Plus R1';
+rmPlusDeviceTypes[parseInt(0x27a6, 16)] = 'Broadlink RM2 Pro PP';
 rmPlusDeviceTypes[parseInt(0x279d, 16)] = 'Broadlink RM3 Pro Plus';
 rmPlusDeviceTypes[parseInt(0x27a9, 16)] = 'Broadlink RM3 Pro Plus v2'; // (model RM 3422)
 
