@@ -47,6 +47,7 @@ unsupportedDeviceTypes[parseInt(0x4EB5, 16)] = 'Broadlink MP1';
 unsupportedDeviceTypes[parseInt(0x2722, 16)] = 'Broadlink S1 (SmartOne Alarm Kit)';
 unsupportedDeviceTypes[parseInt(0x4E4D, 16)] = 'Dooya DT360E (DOOYA_CURTAIN_V2) or Hysen Heating Controller';
 unsupportedDeviceTypes[parseInt(0x4ead, 16)] = 'Dooya DT360E (DOOYA_CURTAIN_V2) or Hysen Heating Controller';
+unsupportedDeviceTypes[parseInt(0x947a, 16)] = 'BroadLink Outlet';
 
 
 class Broadlink extends EventEmitter {
