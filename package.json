@@ -2,13 +2,26 @@
   "name": "broadlinkjs-rm",
   "version": "0.7.6",
   "description": "A Node.JS fork of broadlinkjs specifically intended for interacting with RM devices in homebridge-broadlink-rm",
-  "main": "index.js",
+  "main": "dist/index",
+  "type": "index",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "tsc --noEmit && eslint '*/**/*.{js,ts,tsx}' --quiet --fix",
+    "build": "tsc",
+    "test": "jest"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lprhodes/broadlinkjs-rm.git"
+  },
+  "devDependencies": {
+    "@types/node": "^13.1.4",
+    "@typescript-eslint/eslint-plugin": "^2.20.0",
+    "@typescript-eslint/parser": "^2.20.0",
+    "eslint": "^6.8.0",
+    "eslint-config-prettier": "^6.10.0",
+    "eslint-plugin-prettier": "^3.1.2",
+    "prettier": "^1.19.1",
+    "typescript": "^3.2.2"
   },
   "keywords": [
     "Broadlink",
@@ -21,5 +34,19 @@
   "bugs": {
     "url": "https://github.com/lprhodes/broadlinkjs-rm/issues"
   },
-  "homepage": "https://github.com/lprhodes/broadlinkjs-rm#readme"
+  "homepage": "https://github.com/lprhodes/broadlinkjs-rm#readme",
+  "jest": {
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json",
+      "node"
+    ]
+  }
 }

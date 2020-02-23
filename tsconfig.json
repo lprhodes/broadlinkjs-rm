@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "strictNullChecks": true,
+    "module": "commonjs",
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "outDir": "dist",
+    "sourceMap": true,
+    "strict": true,
+    "target": "es2017",
+    "typeRoots": [
+      "src/@types",
+      "src/typings",
+        "node_modules/@types"
+    ]
+  },
+  "compileOnSave": true,
+  "include": [
+    "src/**/*",
+    "index.d.ts"
+  ]
+}
