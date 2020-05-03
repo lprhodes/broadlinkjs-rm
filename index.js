@@ -29,6 +29,14 @@ rmPlusDeviceTypes[parseInt(0x279d, 16)] = 'Broadlink RM3 Pro Plus';
 rmPlusDeviceTypes[parseInt(0x27a9, 16)] = 'Broadlink RM3 Pro Plus v2'; // (model RM 3422)
 rmPlusDeviceTypes[parseInt(0x27c3, 16)] = 'Broadlink RM3 Pro';
 
+// RM4 Devices (without RF support)
+const rm4DeviceTypes = {};
+rm4DeviceTypes[parseInt(0x51da, 16)] = "Broadlink RM Mini 4";
+rm4DeviceTypes[parseInt(0x5f36, 16)] = "Broadlink RM Mini 3";
+rm4DeviceTypes[parseInt(0x610e, 16)] = "Broadlink RM Mini 4";
+rm4DeviceTypes[parseInt(0x62bc, 16)] = "Broadlink RM Mini 4";
+rm4DeviceTypes[parseInt(0x6070, 16)] = "Broadlink RM Mini 4 C";
+rm4DeviceTypes[parseInt(0x62be, 16)] = "Broadlink RM Mini 4 C";
 
 // Known Unsupported Devices
 const unsupportedDeviceTypes = {};
@@ -208,16 +216,24 @@ class Broadlink extends EventEmitter {
 
     // If we don't know anything about the device we ask the user to provide details so that
     // we can handle it correctly.
-    const isKnownDevice = (rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)])
+    const isKnownDevice = (rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)] || rm4DeviceTypes[parseInt(deviceType, 16)])
 
     if (!isKnownDevice) {
       log(`\n\x1b[35m[Info]\x1b[0m We've discovered an unknown Broadlink device. This likely won't cause any issues.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${deviceType.toString(16)}". The device is connected to your network with the IP address "${host.address}".\n`);
       
       return null;
     }
-    
+
+    const isRM4Device = rm4DeviceTypes[parseInt(deviceType, 16)]
+    let device = null;
+
     // The Broadlink device is something we can use.
-    const device = new Device(host, macAddress, deviceType)
+    if (isRM4Device){
+      device = new DeviceRM4(host, macAddress, deviceType)
+    } else{
+      device = new Device(host, macAddress, deviceType)
+    }
+
     device.log = log;
     device.debug = debug;
 
@@ -234,7 +250,7 @@ class Broadlink extends EventEmitter {
 
 class Device {
 
-  constructor (host, macAddress, deviceType, port) {
+  constructor (host, macAddress, deviceType) {
     this.host = host;
     this.mac = macAddress;
     this.emitter = new EventEmitter();
@@ -247,9 +263,9 @@ class Device {
     this.removeListener = this.emitter.removeListener;
 
     this.count = Math.random() & 0xffff;
-    this.key = new Buffer([0x09, 0x76, 0x28, 0x34, 0x3f, 0xe9, 0x9e, 0x23, 0x76, 0x5c, 0x15, 0x13, 0xac, 0xcf, 0x8b, 0x02]);
-    this.iv = new Buffer([0x56, 0x2e, 0x17, 0x99, 0x6d, 0x09, 0x3d, 0x28, 0xdd, 0xb3, 0xba, 0x69, 0x5a, 0x2e, 0x6f, 0x58]);
-    this.id = new Buffer([0, 0, 0, 0]);
+    this.key = new Buffer.from([0x09, 0x76, 0x28, 0x34, 0x3f, 0xe9, 0x9e, 0x23, 0x76, 0x5c, 0x15, 0x13, 0xac, 0xcf, 0x8b, 0x02]);
+    this.iv = new Buffer.from([0x56, 0x2e, 0x17, 0x99, 0x6d, 0x09, 0x3d, 0x28, 0xdd, 0xb3, 0xba, 0x69, 0x5a, 0x2e, 0x6f, 0x58]);
+    this.id = new Buffer.from([0, 0, 0, 0]);
 
     this.setupSocket();
 
@@ -435,7 +451,7 @@ class Device {
   }
 
   sendData (data, debug = false) {
-    let packet = new Buffer([0x02, 0x00, 0x00, 0x00]);
+    let packet = new Buffer.from([0x02, 0x00, 0x00, 0x00]);
     packet = Buffer.concat([packet, data]);
     this.sendPacket(0x6a, packet, debug);
   }
@@ -475,6 +491,80 @@ class Device {
       const packet = Buffer.alloc(16, 0);
       packet[0] = 0x1b;
       this.sendPacket(0x6a, packet);
+    }
+  }
+}
+
+class DeviceRM4 extends Device {
+
+  constructor (host, macAddress, deviceType) {
+    super(host, macAddress, deviceType);
+
+    this.request_header = [0x04, 0x00]
+    this.code_sending_header = [0xd0,0x00]
+  }
+
+  checkData() {
+    let packet = Buffer.alloc(16, 0);
+    packet[0] = this.request_header[0];
+    packet[1] = this.request_header[1];
+    packet[2] = 0x04;
+    this.sendPacket(0x6a, packet);
+  }
+
+  sendData (data, debug = false) {
+    let packet = Buffer.from(this.code_sending_header);
+    packet = Buffer.concat([packet, Buffer.from([0x02, 0x00, 0x00, 0x00])]);
+    packet = Buffer.concat([packet, data]);
+    this.sendPacket(0x6a, packet, debug);
+  }
+
+  checkTemperature() {
+    let packet = Buffer.alloc(16, 0);
+    packet[0] = this.request_header[0];
+    packet[1] = this.request_header[1];
+    packet[2] = 0x24;
+    this.sendPacket(0x6a, packet);
+  }
+
+  enterLearning() {
+    let packet = Buffer.alloc(16, 0);
+    packet[0] = this.request_header[0];
+    packet[1] = this.request_header[1];
+    packet[2] = 0x03;
+    this.sendPacket(0x6a, packet);
+  }
+
+  cancelLearn() {
+    let packet = Buffer.alloc(16, 0);
+    packet[0] = this.request_header[0];
+    packet[1] = this.request_header[1];
+    packet[2] = 0x1e;
+    this.sendPacket(0x6a, packet);
+  }
+
+  onPayloadReceived (err, payload) {
+    const param = payload[0];
+
+    const data = Buffer.alloc(payload.length - 4, 0);
+    payload.copy(data, 0, 4);
+
+    switch (param) {
+      case 10: {
+        const temp = (payload[0x6] * 10 + payload[0x7]) / 10.0;
+        //const humidity = (payload[0x8] * 10 + payload[0x9]) / 10.0;
+        this.emit('temperature', temp);
+        break;
+      }
+      case 4: { //get from start ot stop learning
+        break;
+      }
+      case 94: { //get data from learning
+        const data = Buffer.alloc(payload.length - 4, 0);
+        payload.copy(data, 0, 6);
+        this.emit('rawData', data);
+        break;
+      }
     }
   }
 }
