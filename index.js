@@ -534,14 +534,17 @@ class DeviceRM4 extends Device {
   }
 
   checkData() {
-    let packet = new Buffer([0x04]);
-    packet = Buffer.concat([this.request_header, packet]);
+    let packet = Buffer.alloc(16, 0);
+    packet[0] = this.request_header[0];
+    packet[1] = this.request_header[1];
+    packet[2] = 0x04;
     this.sendPacket(0x6a, packet);
   }
 
   sendData (data, debug = false) {
-    let packet = new Buffer([0x02, 0x00, 0x00, 0x00]);
-    packet = Buffer.concat([this.code_sending_header, packet, data]);
+    let packet = Buffer.from(this.code_sending_header);
+    packet = Buffer.concat([packet, Buffer.from([0x02, 0x00, 0x00, 0x00])]);
+    packet = Buffer.concat([packet, data]);
     this.sendPacket(0x6a, packet, debug);
   }
 
@@ -552,10 +555,12 @@ class DeviceRM4 extends Device {
     packet[2] = 0x24;
     this.sendPacket(0x6a, packet);
   }
-  
+
   enterLearning() {
-    let packet = new Buffer([0x03]);
-    packet = Buffer.concat([this.request_header, packet]);
+    let packet = Buffer.alloc(16, 0);
+    packet[0] = this.request_header[0];
+    packet[1] = this.request_header[1];
+    packet[2] = 0x03;
     this.sendPacket(0x6a, packet);
   }
 
