@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lprhodes/broadlinkjs-rm.git"
+    "url": "git+https://github.com/kiwi-cam/broadlinkjs-rm.git"
   },
   "keywords": [
     "Broadlink",
