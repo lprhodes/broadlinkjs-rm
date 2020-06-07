@@ -258,14 +258,17 @@ class Device {
     this.type = deviceType;
     this.model = rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)];
 
+    this.request_header = parseInt(deviceType, 16) === parseInt(0x5f36, 16) ? new Buffer([0x04, 0x00]) : new Buffer([]);
+    this.code_sending_header = parseInt(deviceType, 16) === parseInt(0x5f36, 16) ? new Buffer([0xd0, 0x00]) : new Buffer([]);
+
     this.on = this.emitter.on;
     this.emit = this.emitter.emit;
     this.removeListener = this.emitter.removeListener;
 
     this.count = Math.random() & 0xffff;
-    this.key = new Buffer.from([0x09, 0x76, 0x28, 0x34, 0x3f, 0xe9, 0x9e, 0x23, 0x76, 0x5c, 0x15, 0x13, 0xac, 0xcf, 0x8b, 0x02]);
-    this.iv = new Buffer.from([0x56, 0x2e, 0x17, 0x99, 0x6d, 0x09, 0x3d, 0x28, 0xdd, 0xb3, 0xba, 0x69, 0x5a, 0x2e, 0x6f, 0x58]);
-    this.id = new Buffer.from([0, 0, 0, 0]);
+    this.key = new Buffer([0x09, 0x76, 0x28, 0x34, 0x3f, 0xe9, 0x9e, 0x23, 0x76, 0x5c, 0x15, 0x13, 0xac, 0xcf, 0x8b, 0x02]);
+    this.iv = new Buffer([0x56, 0x2e, 0x17, 0x99, 0x6d, 0x09, 0x3d, 0x28, 0xdd, 0xb3, 0xba, 0x69, 0x5a, 0x2e, 0x6f, 0x58]);
+    this.id = new Buffer([0, 0, 0, 0]);
 
     this.setupSocket();
 
@@ -307,6 +310,14 @@ class Device {
 
         this.emit('deviceReady');
       } else if (command == 0xee || command == 0xef) {
+        const payloadHex = payload.toString('hex');
+        const requestHeaderHex = this.request_header.toString('hex');
+        
+        const indexOfHeader = payloadHex.indexOf(requestHeaderHex);
+
+        if (indexOfHeader > -1) {
+          payload = payload.slice(indexOfHeader + this.request_header.length, payload.length);
+        }
         this.onPayloadReceived(err, payload);
       } else {
         console.log('Unhandled Command: ', command);
@@ -361,8 +372,8 @@ class Device {
     packet[0x05] = 0xa5;
     packet[0x06] = 0xaa;
     packet[0x07] = 0x55;
-    packet[0x24] = 0x2a;
-    packet[0x25] = 0x27;
+    packet[0x24] = this.type & 0xff
+    packet[0x25] = this.type >> 8
     packet[0x26] = command;
     packet[0x28] = this.count & 0xff;
     packet[0x29] = this.count >> 8;
@@ -376,26 +387,40 @@ class Device {
     packet[0x31] = this.id[1];
     packet[0x32] = this.id[2];
     packet[0x33] = this.id[3];
+ 
+    if (payload){
+      const padPayload = Buffer.alloc(16 - payload.length % 16, 0)
+      payload = Buffer.concat([payload, padPayload]);
+    }
+
+	
+				 
+																  
+													 
+	 
 
     let checksum = 0xbeaf;
     for (let i = 0; i < payload.length; i++) {
       checksum += payload[i];
+	 
       checksum = checksum & 0xffff;
     }
+								   
+		
+    packet[0x34] = checksum & 0xff;
+    packet[0x35] = checksum >> 8;						 
 
     const cipher = crypto.createCipheriv('aes-128-cbc', this.key, this.iv);
     payload = cipher.update(payload);
-
-    packet[0x34] = checksum & 0xff;
-    packet[0x35] = checksum >> 8;
 
     packet = Buffer.concat([packet, payload]);
 
     checksum = 0xbeaf;
     for (let i = 0; i < packet.length; i++) {
       checksum += packet[i];
-      checksum = checksum & 0xffff;
     }
+    checksum = checksum & 0xffff;
+	 
     packet[0x20] = checksum & 0xff;
     packet[0x21] = checksum >> 8;
 
@@ -425,6 +450,10 @@ class Device {
         this.emit('rawData', data);
         break;
       }
+									  
+									  
+			  
+	   
       case 26: { //get from check_data
         const data = Buffer.alloc(1, 0);
         payload.copy(data, 0, 0x4);
@@ -505,17 +534,14 @@ class DeviceRM4 extends Device {
   }
 
   checkData() {
-    let packet = Buffer.alloc(16, 0);
-    packet[0] = this.request_header[0];
-    packet[1] = this.request_header[1];
-    packet[2] = 0x04;
+    let packet = new Buffer([0x04]);
+    packet = Buffer.concat([this.request_header, packet]);
     this.sendPacket(0x6a, packet);
   }
 
   sendData (data, debug = false) {
-    let packet = Buffer.from(this.code_sending_header);
-    packet = Buffer.concat([packet, Buffer.from([0x02, 0x00, 0x00, 0x00])]);
-    packet = Buffer.concat([packet, data]);
+    let packet = new Buffer([0x02, 0x00, 0x00, 0x00]);
+    packet = Buffer.concat([this.code_sending_header, packet, data]);
     this.sendPacket(0x6a, packet, debug);
   }
 
@@ -526,12 +552,10 @@ class DeviceRM4 extends Device {
     packet[2] = 0x24;
     this.sendPacket(0x6a, packet);
   }
-
+  
   enterLearning() {
-    let packet = Buffer.alloc(16, 0);
-    packet[0] = this.request_header[0];
-    packet[1] = this.request_header[1];
-    packet[2] = 0x03;
+    let packet = new Buffer([0x03]);
+    packet = Buffer.concat([this.request_header, packet]);
     this.sendPacket(0x6a, packet);
   }
 
@@ -557,6 +581,10 @@ class DeviceRM4 extends Device {
         break;
       }
       case 4: { //get from start ot stop learning
+        break;
+      }
+      case 38: { //get from check_data
+        this.emit('rawData', payload);
         break;
       }
       case 94: { //get data from learning
