@@ -393,19 +393,11 @@ class Device {
       payload = Buffer.concat([payload, padPayload]);
     }
 
-	
-				 
-																  
-													 
-	 
-
     let checksum = 0xbeaf;
     for (let i = 0; i < payload.length; i++) {
       checksum += payload[i];
-	 
-      checksum = checksum & 0xffff;
-    }
-								   
+    }	
+    checksum = checksum & 0xffff;							   
 		
     packet[0x34] = checksum & 0xff;
     packet[0x35] = checksum >> 8;						 
@@ -449,11 +441,7 @@ class Device {
         payload.copy(data, 0, 4);
         this.emit('rawData', data);
         break;
-      }
-									  
-									  
-			  
-	   
+      }   
       case 26: { //get from check_data
         const data = Buffer.alloc(1, 0);
         payload.copy(data, 0, 0x4);
@@ -466,6 +454,10 @@ class Device {
         payload.copy(data, 0, 0x4);
         if (data[0] !== 0x1) break;
         this.emit('rawRFData2', data);
+        break;
+      } 
+      case 38: { //get from check_data
+        this.emit('rawData', payload);
         break;
       }
     }
@@ -570,35 +562,6 @@ class DeviceRM4 extends Device {
     packet[1] = this.request_header[1];
     packet[2] = 0x1e;
     this.sendPacket(0x6a, packet);
-  }
-
-  onPayloadReceived (err, payload) {
-    const param = payload[0];
-
-    const data = Buffer.alloc(payload.length - 4, 0);
-    payload.copy(data, 0, 4);
-
-    switch (param) {
-      case 10: {
-        const temp = (payload[0x6] * 10 + payload[0x7]) / 10.0;
-        //const humidity = (payload[0x8] * 10 + payload[0x9]) / 10.0;
-        this.emit('temperature', temp);
-        break;
-      }
-      case 4: { //get from start ot stop learning
-        break;
-      }
-      case 38: { //get from check_data
-        this.emit('rawData', payload);
-        break;
-      }
-      case 94: { //get data from learning
-        const data = Buffer.alloc(payload.length - 4, 0);
-        payload.copy(data, 0, 6);
-        this.emit('rawData', data);
-        break;
-      }
-    }
   }
 }
 
