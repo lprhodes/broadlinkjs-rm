@@ -7,7 +7,7 @@ const assert = require('assert');
 // RM Devices (without RF support)
 const rmDeviceTypes = {};
 rmDeviceTypes[parseInt(0x2737, 16)] = "Broadlink RM Mini";
-rmDeviceTypes[parseInt(0x27c7, 16)] = 'Broadlink RM Mini 3 A'; 
+rmDeviceTypes[parseInt(0x27c7, 16)] = 'Broadlink RM Mini 3 A';
 rmDeviceTypes[parseInt(0x27c2, 16)] = "Broadlink RM Mini 3 B";
 rmDeviceTypes[parseInt(0x27de, 16)] = "Broadlink RM Mini 3 C";
 rmDeviceTypes[parseInt(0x5f36, 16)] = "Broadlink RM Mini 3 D";
@@ -62,6 +62,67 @@ class Broadlink extends EventEmitter {
     this.sockets = [];
   }
 
+  connect(ssid, password, securityMode) {
+    // Close existing sockets
+    this.sockets.forEach((socket) => {
+      socket.close();
+    })
+
+    this.sockets = [];
+
+    const socketListening = (socket, ssid, password, securityMode) => {
+      const { debug, log } = this;
+      socket.setBroadcast(true);
+
+      const payload = Buffer.alloc(0x88, 0);
+      payload[0x26] = 0x14;
+
+      ssidStart = 68;
+      ssidLength = 0;
+      for (let letter of ssid) {
+        payload[ssidStart + ssidLength] = letter.charCodeAt(0);
+        ssidLength += 1;
+      }
+
+      passStart = 100;
+      passLength = 0;
+      for (let letter of password) {
+        payload[passStart + passLength] = letter.charCodeAt(0);
+        passLength += 1;
+      }
+
+      payload[0x84] = ssidLength;
+      payload[0x85] = passLength;
+      payload[0x86] = securityMode;
+
+      let checksum = 0xbeaf;
+
+      for (let i = 0; i < payload.length; i++) {
+        checksum += payload[i];
+      }
+
+      checksum = checksum & 0xffff;
+      payload[0x20] = checksum & 0xff;
+      payload[0x21] = checksum >> 8;
+
+      if (debug && log) log(`\x1b[35m[INFO]\x1b[0m Attempting to Connect to WIFI. Sending Payload: ${payload.toString('hex').match(/../g).join(' ')}`);
+
+      socket.sendto(payload, 0, payload.length, 80, '255.255.255.255');
+    };
+
+    // Open a UDP socket on each network interface/IP address
+    const ipAddresses = this.getIPAddresses();
+
+    ipAddresses.forEach((ipAddress) => {
+      const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+      this.sockets.push(socket)
+
+      socket.on('listening', socketListening.bind(this, socket, ssid, password, securityMode));
+
+      socket.bind(0, ipAddress);
+    });
+  }
+
   discover() {
     // Close existing sockets
     this.sockets.forEach((socket) => {
@@ -74,9 +135,9 @@ class Broadlink extends EventEmitter {
     const ipAddresses = this.getIPAddresses();
 
     ipAddresses.forEach((ipAddress) => {
-      const socket = dgram.createSocket({ type:'udp4', reuseAddr:true });
+      const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
       this.sockets.push(socket)
-      
+
       socket.on('listening', this.onListening.bind(this, socket, ipAddress));
       socket.on('message', this.onMessage.bind(this));
 
@@ -101,7 +162,7 @@ class Broadlink extends EventEmitter {
     return ipAddresses;
   }
 
-  onListening (socket, ipAddress) {
+  onListening(socket, ipAddress) {
     const { debug, log } = this;
 
     // Broadcase a multicast UDP message to let Broadlink devices know we're listening
@@ -135,7 +196,7 @@ class Broadlink extends EventEmitter {
     packet[0x0d] = year >> 8;
     packet[0x0e] = now.getMinutes();
     packet[0x0f] = now.getHours();
-    
+
     const subyear = year % 100;
     packet[0x10] = subyear;
     packet[0x11] = now.getDay();
@@ -162,7 +223,7 @@ class Broadlink extends EventEmitter {
     socket.sendto(packet, 0, packet.length, 80, '255.255.255.255');
   }
 
-  onMessage (message, host) {
+  onMessage(message, host) {
     // Broadlink device has responded
     const macAddress = Buffer.alloc(6, 0);
 
@@ -183,11 +244,11 @@ class Broadlink extends EventEmitter {
     this.addDevice(host, macAddress, deviceType);
   }
 
-  addDevice (host, macAddress, deviceType) {
+  addDevice(host, macAddress, deviceType) {
     const { log, debug } = this;
 
     if (this.devices[macAddress]) return;
-  
+
     const isHostObjectValid = (
       typeof host === 'object' &&
       (host.port || host.port === 0) &&
@@ -212,10 +273,10 @@ class Broadlink extends EventEmitter {
 
     if (!isKnownDevice) {
       log(`\n\x1b[35m[Info]\x1b[0m We've discovered an unknown Broadlink device. This likely won't cause any issues.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${deviceType.toString(16)}". The device is connected to your network with the IP address "${host.address}".\n`);
-      
+
       return null;
     }
-    
+
     // The Broadlink device is something we can use.
     const device = new Device(host, macAddress, deviceType)
     device.log = log;
@@ -234,7 +295,7 @@ class Broadlink extends EventEmitter {
 
 class Device {
 
-  constructor (host, macAddress, deviceType, port) {
+  constructor(host, macAddress, deviceType, port) {
     this.host = host;
     this.mac = macAddress;
     this.emitter = new EventEmitter();
@@ -266,7 +327,7 @@ class Device {
     socket.on('message', (response) => {
       const encryptedPayload = Buffer.alloc(response.length - 0x38, 0);
       response.copy(encryptedPayload, 0, 0x38);
-      
+
       const err = response[0x22] | (response[0x23] << 8);
       if (err != 0) return;
 
@@ -331,7 +392,7 @@ class Device {
     this.sendPacket(0x65, payload);
   }
 
-  sendPacket (command, payload, debug = false) {
+  sendPacket(command, payload, debug = false) {
     const { log, socket } = this;
     this.count = (this.count + 1) & 0xffff;
 
@@ -391,7 +452,7 @@ class Device {
     });
   }
 
-  onPayloadReceived (err, payload) {
+  onPayloadReceived(err, payload) {
     const param = payload[0];
 
     const data = Buffer.alloc(payload.length - 4, 0);
@@ -434,7 +495,7 @@ class Device {
     this.sendPacket(0x6a, packet);
   }
 
-  sendData (data, debug = false) {
+  sendData(data, debug = false) {
     let packet = new Buffer([0x02, 0x00, 0x00, 0x00]);
     packet = Buffer.concat([packet, data]);
     this.sendPacket(0x6a, packet, debug);
