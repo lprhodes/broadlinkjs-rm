@@ -313,6 +313,8 @@ class Device {
           payload = payload.slice(indexOfHeader + this.request_header.length, payload.length);
         }
         this.onPayloadReceived(err, payload);
+      } else if (command == 0x72) {
+        console.log('Command Acknowledged');
       } else {
         console.log('Unhandled Command: ', command);
       }
