@@ -1,6 +1,6 @@
 {
   "name": "kiwicam-broadlinkjs-rm",
-  "version": "0.8.6",
+  "version": "0.8.7-beta.1",
   "description": "A Node.JS fork of broadlinkjs specifically intended for interacting with RM devices in homebridge-broadlink-rm",
   "main": "index.js",
   "scripts": {
