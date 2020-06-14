@@ -39,6 +39,11 @@ rm4DeviceTypes[parseInt(0x6070, 16)] = "Broadlink RM Mini 4 C";
 rm4DeviceTypes[parseInt(0x62be, 16)] = "Broadlink RM Mini 4 C";
 rm4DeviceTypes[parseInt(0x648d, 16)] = "Broadlink RM Mini 4 S";
 
+// RM4 Devices (with RF support)
+const rm4PlusDeviceTypes = {};
+rm4PlusDeviceTypes[parseInt(0x6026, 16)] = "Broadlink RM 4 Pro";
+rm4PlusDeviceTypes[parseInt(0x61a2, 16)] = "Broadlink RM 4 Pro";
+
 // Known Unsupported Devices
 const unsupportedDeviceTypes = {};
 unsupportedDeviceTypes[parseInt(0, 16)] = 'Broadlink SP1';
@@ -205,7 +210,7 @@ class Broadlink extends EventEmitter {
 
     assert(isHostObjectValid, `createDevice: host should be an object e.g. { address: '192.168.1.32', port: 80 }`);
     assert(macAddress, `createDevice: A unique macAddress should be provided`);
-    assert(deviceType, `createDevice: A deviceType from the rmDeviceTypes, rm4DeviceTypes, or rmPlusDeviceTypes list should be provided`);
+    assert(deviceType, `createDevice: A deviceType from the rmDeviceTypes, rm4DeviceTypes, rm4PlusDeviceTypes, or rmPlusDeviceTypes list should be provided`);
 
     // Mark is at not supported by default so we don't try to
     // create this device again.
@@ -217,7 +222,7 @@ class Broadlink extends EventEmitter {
 
     // If we don't know anything about the device we ask the user to provide details so that
     // we can handle it correctly.
-    const isKnownDevice = (rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)] || rm4DeviceTypes[parseInt(deviceType, 16)])
+    const isKnownDevice = (rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)] || rm4DeviceTypes[parseInt(deviceType, 16)]  || rm4PlusDeviceTypes[parseInt(deviceType, 16)])
 
     if (!isKnownDevice) {
       log(`\n\x1b[35m[Info]\x1b[0m We've discovered an unknown Broadlink device. This likely won't cause any issues.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${deviceType.toString(16)}". The device is connected to your network with the IP address "${host.address}".\n`);
@@ -249,11 +254,11 @@ class Device {
     this.emitter = new EventEmitter();
     this.log = console.log;
     this.type = deviceType;
-    this.model = rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)] || rm4DeviceTypes[parseInt(deviceType, 16)];
+    this.model = rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)] || rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)];
 
     //Use different headers for rm4 devices
-    this.request_header = rm4DeviceTypes[parseInt(deviceType, 16)] ? new Buffer([0x04, 0x00]) : new Buffer([]);
-    this.code_sending_header = rm4DeviceTypes[parseInt(deviceType, 16)] ? new Buffer([0xd0, 0x00]) : new Buffer([]);
+    this.request_header = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)]) ? new Buffer([0x04, 0x00]) : new Buffer([]);
+    this.code_sending_header = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)]) ? new Buffer([0xd0, 0x00]) : new Buffer([]);
 
     this.on = this.emitter.on;
     this.emit = this.emitter.emit;
@@ -267,7 +272,7 @@ class Device {
     this.setupSocket();
 
     // Dynamically add relevant RF methods if the device supports it
-    const isRFSupported = rmPlusDeviceTypes[parseInt(deviceType, 16)];
+    const isRFSupported = rmPlusDeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)];
     if (isRFSupported) this.addRFSupport();
   }
 
