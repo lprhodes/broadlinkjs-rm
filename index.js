@@ -428,9 +428,6 @@ class Device {
   onPayloadReceived (err, payload) {
     const param = payload[0];
 
-    const data = Buffer.alloc(payload.length - 4, 0);
-    payload.copy(data, 0, 4);
-
     switch (param) {
       case 1: {
         const temp = (payload[0x4] * 10 + payload[0x5]) / 10.0;
