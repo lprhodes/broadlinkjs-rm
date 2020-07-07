@@ -446,6 +446,13 @@ class Device {
         this.emit('rawData', data);
         break;
       }
+      case 0x9: {
+        const data = Buffer.alloc(1, 0);
+        payload.copy(data, 0, 0x6);
+        if (data[0] !== 0x1) break;
+        this.emit('rawRFData', data);
+        break;
+      }
       case 0xa: {
         const temp = (payload[0x6] * 10 + payload[0x7]) / 10.0;
         //const humidity = (payload[0x8] * 10 + payload[0x9]) / 10.0;
