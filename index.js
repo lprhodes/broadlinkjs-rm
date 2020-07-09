@@ -11,6 +11,7 @@ rmDeviceTypes[parseInt(0x27c7, 16)] = 'Broadlink RM Mini 3 A';
 rmDeviceTypes[parseInt(0x27c2, 16)] = "Broadlink RM Mini 3 B";
 rmDeviceTypes[parseInt(0x27de, 16)] = "Broadlink RM Mini 3 C";
 rmDeviceTypes[parseInt(0x5f36, 16)] = "Broadlink RM Mini 3 D";
+rmDeviceTypes[parseInt(0x27d3, 16)] = "Broadlink RM Mini 3 KR";
 rmDeviceTypes[parseInt(0x273d, 16)] = 'Broadlink RM Pro Phicomm';
 rmDeviceTypes[parseInt(0x2712, 16)] = 'Broadlink RM2';
 rmDeviceTypes[parseInt(0x2783, 16)] = 'Broadlink RM2 Home Plus';
@@ -38,6 +39,11 @@ rm4DeviceTypes[parseInt(0x62bc, 16)] = "Broadlink RM Mini 4";
 rm4DeviceTypes[parseInt(0x6070, 16)] = "Broadlink RM Mini 4 C";
 rm4DeviceTypes[parseInt(0x62be, 16)] = "Broadlink RM Mini 4 C";
 rm4DeviceTypes[parseInt(0x648d, 16)] = "Broadlink RM Mini 4 S";
+
+// RM4 Devices (with RF support)
+const rm4PlusDeviceTypes = {};
+rm4PlusDeviceTypes[parseInt(0x6026, 16)] = "Broadlink RM 4 Pro";
+rm4PlusDeviceTypes[parseInt(0x61a2, 16)] = "Broadlink RM 4 Pro";
 
 // Known Unsupported Devices
 const unsupportedDeviceTypes = {};
@@ -205,7 +211,7 @@ class Broadlink extends EventEmitter {
 
     assert(isHostObjectValid, `createDevice: host should be an object e.g. { address: '192.168.1.32', port: 80 }`);
     assert(macAddress, `createDevice: A unique macAddress should be provided`);
-    assert(deviceType, `createDevice: A deviceType from the rmDeviceTypes, rm4DeviceTypes, or rmPlusDeviceTypes list should be provided`);
+    assert(deviceType, `createDevice: A deviceType from the rmDeviceTypes, rm4DeviceTypes, rm4PlusDeviceTypes, or rmPlusDeviceTypes list should be provided`);
 
     // Mark is at not supported by default so we don't try to
     // create this device again.
@@ -217,7 +223,7 @@ class Broadlink extends EventEmitter {
 
     // If we don't know anything about the device we ask the user to provide details so that
     // we can handle it correctly.
-    const isKnownDevice = (rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)] || rm4DeviceTypes[parseInt(deviceType, 16)])
+    const isKnownDevice = (rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)] || rm4DeviceTypes[parseInt(deviceType, 16)]  || rm4PlusDeviceTypes[parseInt(deviceType, 16)])
 
     if (!isKnownDevice) {
       log(`\n\x1b[35m[Info]\x1b[0m We've discovered an unknown Broadlink device. This likely won't cause any issues.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${deviceType.toString(16)}". The device is connected to your network with the IP address "${host.address}".\n`);
@@ -249,11 +255,11 @@ class Device {
     this.emitter = new EventEmitter();
     this.log = console.log;
     this.type = deviceType;
-    this.model = rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)] || rm4DeviceTypes[parseInt(deviceType, 16)];
+    this.model = rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)] || rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)];
 
     //Use different headers for rm4 devices
-    this.request_header = rm4DeviceTypes[parseInt(deviceType, 16)] ? new Buffer([0x04, 0x00]) : new Buffer([]);
-    this.code_sending_header = rm4DeviceTypes[parseInt(deviceType, 16)] ? new Buffer([0xd0, 0x00]) : new Buffer([]);
+    this.request_header = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)]) ? new Buffer([0x04, 0x00]) : new Buffer([]);
+    this.code_sending_header = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)]) ? new Buffer([0xd0, 0x00]) : new Buffer([]);
 
     this.on = this.emitter.on;
     this.emit = this.emitter.emit;
@@ -267,7 +273,7 @@ class Device {
     this.setupSocket();
 
     // Dynamically add relevant RF methods if the device supports it
-    const isRFSupported = rmPlusDeviceTypes[parseInt(deviceType, 16)];
+    const isRFSupported = rmPlusDeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)];
     if (isRFSupported) this.addRFSupport();
   }
 
@@ -356,6 +362,7 @@ class Device {
 
   sendPacket (command, payload, debug = false) {
     const { log, socket } = this;
+    debug = this.debug;
     this.count = (this.count + 1) & 0xffff;
 
     let packet = Buffer.alloc(0x38, 0);
@@ -422,38 +429,51 @@ class Device {
 
   onPayloadReceived (err, payload) {
     const param = payload[0];
-
-    const data = Buffer.alloc(payload.length - 4, 0);
-    payload.copy(data, 0, 4);
+    const { log, debug } = this;
+    
+    if (debug) log('\x1b[33m[DEBUG]\x1b[0m Packet received with param 0x', param.toString(16))
+    if (debug) log('\x1b[33m[DEBUG]\x1b[0m Packet received: ', payload.toString('hex'))
 
     switch (param) {
-      case 1: {
+      case 0x1: {
         const temp = (payload[0x4] * 10 + payload[0x5]) / 10.0;
         this.emit('temperature', temp);
         break;
       }
-      case 4: { //get from check_data
+      case 0x4: { //get from check_data
         const data = Buffer.alloc(payload.length - 4, 0);
         payload.copy(data, 0, 4);
         this.emit('rawData', data);
         break;
       }
-      case 38: { //get from check_data
-        this.emit('rawData', payload);
+      case 0xa: {
+        const temp = (payload[0x6] * 10 + payload[0x7]) / 10.0;
+        //const humidity = (payload[0x8] * 10 + payload[0x9]) / 10.0;
+        this.emit('temperature', temp);
         break;
       }
-      case 26: { //get from check_data
+      case 0x1a: { //get from check_data
         const data = Buffer.alloc(1, 0);
         payload.copy(data, 0, 0x4);
         if (data[0] !== 0x1) break;
         this.emit('rawRFData', data);
         break;
       }
-      case 27: { //get from check_data
+      case 0x1b: { //get from check_data
         const data = Buffer.alloc(1, 0);
         payload.copy(data, 0, 0x4);
         if (data[0] !== 0x1) break;
         this.emit('rawRFData2', data);
+        break;
+      }
+      case 0x26: { //get from check_data
+        this.emit('rawData', payload);
+        break;
+      }
+      case 0x5e: { //get data from learning
+        const data = Buffer.alloc(payload.length - 4, 0);
+        payload.copy(data, 0, 6);
+        this.emit('rawData', data);
         break;
       }
     }
@@ -480,33 +500,43 @@ class Device {
   }
 
   checkTemperature() {
-    let packet = Buffer.alloc(16, 0);
-    packet[0] = 1;
+    //let packet = Buffer.alloc(16, 0);
+    //packet[0] = 1;
+    let packet = new Buffer([0x1]);
+    packet = Buffer.concat([this.request_header, packet]);
     this.sendPacket(0x6a, packet);
   }
 
   cancelLearn() {
-    const packet = Buffer.alloc(16, 0);
-    packet[0] = 0x1e;
+    //const packet = Buffer.alloc(16, 0);
+    //packet[0] = 0x1e;
+    let packet = new Buffer([0x1e]);
+    packet = Buffer.concat([this.request_header, packet]);
     this.sendPacket(0x6a, packet);
   }
 
   addRFSupport() {
     this.enterRFSweep = () => {
-      const packet = Buffer.alloc(16, 0);
-      packet[0] = 0x19;
+      //const packet = Buffer.alloc(16, 0);
+      //packet[0] = 0x19;
+      let packet = new Buffer([0x19]);
+      packet = Buffer.concat([this.request_header, packet]);
       this.sendPacket(0x6a, packet);
     }
 
     this.checkRFData = () => {
-      const packet = Buffer.alloc(16, 0);
-      packet[0] = 0x1a;
+      //const packet = Buffer.alloc(16, 0);
+      //packet[0] = 0x1a;
+      let packet = new Buffer([0x1a]);
+      packet = Buffer.concat([this.request_header, packet]);
       this.sendPacket(0x6a, packet);
     }
 
     this.checkRFData2 = () => {
-      const packet = Buffer.alloc(16, 0);
-      packet[0] = 0x1b;
+      //const packet = Buffer.alloc(16, 0);
+      //packet[0] = 0x1b;
+      let packet = new Buffer([0x1b]);
+      packet = Buffer.concat([this.request_header, packet]);
       this.sendPacket(0x6a, packet);
     }
   }
