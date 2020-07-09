@@ -279,10 +279,11 @@ class Device {
 
   // Create a UDP socket to receive messages from the broadlink device.
   setupSocket() {
+    const { log, debug } = this;
     const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
     this.socket = socket;
 
-    socket.on('message', (response) => {
+    socket.on('message', (response) => {    
       const encryptedPayload = Buffer.alloc(response.length - 0x38, 0);
       response.copy(encryptedPayload, 0, 0x38);
       
@@ -299,8 +300,9 @@ class Device {
       
       if (!payload) return false;
       
+      if (debug) log('\x1b[33m[DEBUG]\x1b[0m Response received: ', response.toString('hex'));
+      
       const command = response[0x26];
-
       if (command == 0xe9) {
         this.key = Buffer.alloc(0x10, 0);
         payload.copy(this.key, 0, 0x04, 0x14);
@@ -320,9 +322,9 @@ class Device {
         }
         this.onPayloadReceived(err, payload);
       } else if (command == 0x72) {
-        console.log('Command Acknowledged');
+        log(`\x1b[35m[INFO]\x1b[0m Command Acknowledged');
       } else {
-        console.log('Unhandled Command: ', command);
+        log('\x1b[33m[DEBUG]\x1b[0m Unhandled Command: ', command);
       }
     });
 
