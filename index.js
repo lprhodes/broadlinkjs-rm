@@ -322,7 +322,7 @@ class Device {
         }
         this.onPayloadReceived(err, payload);
       } else if (command == 0x72) {
-        log(`\x1b[35m[INFO]\x1b[0m Command Acknowledged');
+        log('\x1b[35m[INFO]\x1b[0m Command Acknowledged');
       } else {
         log('\x1b[33m[DEBUG]\x1b[0m Unhandled Command: ', command);
       }
