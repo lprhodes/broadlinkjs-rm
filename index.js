@@ -509,16 +509,13 @@ class Device {
   }
 
   checkTemperature() {
-    //let packet = Buffer.alloc(16, 0);
-    //packet[0] = 1;
     let packet = new Buffer([0x1]);
+    let packet = (rm4DeviceTypes[parseInt(this.deviceType, 16)] || rm4PlusDeviceTypes[parseInt(this.deviceType, 16)]) ? new Buffer([0x24]) : new Buffer([0x1]);
     packet = Buffer.concat([this.request_header, packet]);
     this.sendPacket(0x6a, packet);
   }
 
   cancelLearn() {
-    //const packet = Buffer.alloc(16, 0);
-    //packet[0] = 0x1e;
     let packet = new Buffer([0x1e]);
     packet = Buffer.concat([this.request_header, packet]);
     this.sendPacket(0x6a, packet);
@@ -526,24 +523,18 @@ class Device {
 
   addRFSupport() {
     this.enterRFSweep = () => {
-      //const packet = Buffer.alloc(16, 0);
-      //packet[0] = 0x19;
       let packet = new Buffer([0x19]);
       packet = Buffer.concat([this.request_header, packet]);
       this.sendPacket(0x6a, packet);
     }
 
     this.checkRFData = () => {
-      //const packet = Buffer.alloc(16, 0);
-      //packet[0] = 0x1a;
       let packet = new Buffer([0x1a]);
       packet = Buffer.concat([this.request_header, packet]);
       this.sendPacket(0x6a, packet);
     }
 
     this.checkRFData2 = () => {
-      //const packet = Buffer.alloc(16, 0);
-      //packet[0] = 0x1b;
       let packet = new Buffer([0x1b]);
       packet = Buffer.concat([this.request_header, packet]);
       this.sendPacket(0x6a, packet);
