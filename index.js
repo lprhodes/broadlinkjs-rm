@@ -280,10 +280,11 @@ class Device {
 
   // Create a UDP socket to receive messages from the broadlink device.
   setupSocket() {
+    const { log, debug } = this;
     const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
     this.socket = socket;
 
-    socket.on('message', (response) => {
+    socket.on('message', (response) => {    
       const encryptedPayload = Buffer.alloc(response.length - 0x38, 0);
       response.copy(encryptedPayload, 0, 0x38);
       
@@ -300,8 +301,9 @@ class Device {
       
       if (!payload) return false;
       
+      if (debug) log('\x1b[33m[DEBUG]\x1b[0m Response received: ', response.toString('hex'));
+      
       const command = response[0x26];
-
       if (command == 0xe9) {
         this.key = Buffer.alloc(0x10, 0);
         payload.copy(this.key, 0, 0x04, 0x14);
@@ -321,9 +323,9 @@ class Device {
         }
         this.onPayloadReceived(err, payload);
       } else if (command == 0x72) {
-        console.log('Command Acknowledged');
+        log('\x1b[35m[INFO]\x1b[0m Command Acknowledged');
       } else {
-        console.log('Unhandled Command: ', command);
+        log('\x1b[33m[DEBUG]\x1b[0m Unhandled Command: ', command);
       }
     });
 
@@ -447,6 +449,13 @@ class Device {
         this.emit('rawData', data);
         break;
       }
+      case 0x9: { //get from check_data
+        const data = Buffer.alloc(1, 0);
+        payload.copy(data, 0, 0x4);
+        if (data[0] !== 0x1) break;
+        this.emit('rawRFData', data);
+        break;
+      }
       case 0xa: {
         const temp = (payload[0x6] * 10 + payload[0x7]) / 10.0;
         //const humidity = (payload[0x8] * 10 + payload[0x9]) / 10.0;
@@ -501,16 +510,13 @@ class Device {
   }
 
   checkTemperature() {
-    //let packet = Buffer.alloc(16, 0);
-    //packet[0] = 1;
     let packet = new Buffer([0x1]);
+    let packet = (rm4DeviceTypes[parseInt(this.deviceType, 16)] || rm4PlusDeviceTypes[parseInt(this.deviceType, 16)]) ? new Buffer([0x24]) : new Buffer([0x1]);
     packet = Buffer.concat([this.request_header, packet]);
     this.sendPacket(0x6a, packet);
   }
 
   cancelLearn() {
-    //const packet = Buffer.alloc(16, 0);
-    //packet[0] = 0x1e;
     let packet = new Buffer([0x1e]);
     packet = Buffer.concat([this.request_header, packet]);
     this.sendPacket(0x6a, packet);
@@ -518,24 +524,18 @@ class Device {
 
   addRFSupport() {
     this.enterRFSweep = () => {
-      //const packet = Buffer.alloc(16, 0);
-      //packet[0] = 0x19;
       let packet = new Buffer([0x19]);
       packet = Buffer.concat([this.request_header, packet]);
       this.sendPacket(0x6a, packet);
     }
 
     this.checkRFData = () => {
-      //const packet = Buffer.alloc(16, 0);
-      //packet[0] = 0x1a;
       let packet = new Buffer([0x1a]);
       packet = Buffer.concat([this.request_header, packet]);
       this.sendPacket(0x6a, packet);
     }
 
     this.checkRFData2 = () => {
-      //const packet = Buffer.alloc(16, 0);
-      //packet[0] = 0x1b;
       let packet = new Buffer([0x1b]);
       packet = Buffer.concat([this.request_header, packet]);
       this.sendPacket(0x6a, packet);
