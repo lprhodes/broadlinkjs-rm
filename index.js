@@ -44,6 +44,7 @@ rm4DeviceTypes[parseInt(0x648d, 16)] = "Broadlink RM Mini 4 S";
 const rm4PlusDeviceTypes = {};
 rm4PlusDeviceTypes[parseInt(0x6026, 16)] = "Broadlink RM 4 Pro";
 rm4PlusDeviceTypes[parseInt(0x61a2, 16)] = "Broadlink RM 4 Pro";
+rm4PlusDeviceTypes[parseInt(0x649b, 16)] = "Broadlink RM 4 Pro";
 
 // Known Unsupported Devices
 const unsupportedDeviceTypes = {};
