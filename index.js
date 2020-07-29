@@ -510,7 +510,7 @@ class Device {
   }
 
   checkTemperature() {
-    let packet = new Buffer([0x1]);
+    //let packet = new Buffer([0x1]);
     let packet = (rm4DeviceTypes[parseInt(this.deviceType, 16)] || rm4PlusDeviceTypes[parseInt(this.deviceType, 16)]) ? new Buffer([0x24]) : new Buffer([0x1]);
     packet = Buffer.concat([this.request_header, packet]);
     this.sendPacket(0x6a, packet);
