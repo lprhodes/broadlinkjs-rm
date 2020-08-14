@@ -458,7 +458,7 @@ class Device {
         break;
       }
       case 0xa: {
-        const temp = (payload[0x6] * 10 + payload[0x7]) / 10.0;
+        const temp = (payload[0x6] * 100 + payload[0x7]) / 100.0;
         //const humidity = (payload[0x8] * 10 + payload[0x9]) / 10.0;
         this.emit('temperature', temp);
         //this.emit('humidity', humidity);
