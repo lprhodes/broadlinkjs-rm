@@ -77,15 +77,15 @@ class Broadlink extends EventEmitter {
       const payload = Buffer.alloc(0x88, 0);
       payload[0x26] = 0x14;
 
-      ssidStart = 68;
-      ssidLength = 0;
+      const ssidStart = 68;
+      let ssidLength = 0;
       for (let letter of ssid) {
         payload[ssidStart + ssidLength] = letter.charCodeAt(0);
         ssidLength += 1;
       }
 
-      passStart = 100;
-      passLength = 0;
+      const passStart = 100;
+      let passLength = 0;
       for (let letter of password) {
         payload[passStart + passLength] = letter.charCodeAt(0);
         passLength += 1;
