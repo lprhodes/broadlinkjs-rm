@@ -7,7 +7,7 @@ const assert = require('assert');
 // RM Devices (without RF support)
 const rmDeviceTypes = {};
 rmDeviceTypes[parseInt(0x2737, 16)] = "Broadlink RM Mini";
-rmDeviceTypes[parseInt(0x27c7, 16)] = 'Broadlink RM Mini 3 A'; 
+rmDeviceTypes[parseInt(0x27c7, 16)] = 'Broadlink RM Mini 3 A';
 rmDeviceTypes[parseInt(0x27c2, 16)] = "Broadlink RM Mini 3 B";
 rmDeviceTypes[parseInt(0x27de, 16)] = "Broadlink RM Mini 3 C";
 rmDeviceTypes[parseInt(0x5f36, 16)] = "Broadlink RM Mini 3 D";
@@ -93,7 +93,7 @@ class Broadlink extends EventEmitter {
     ipAddresses.forEach((ipAddress) => {
       const socket = dgram.createSocket({ type:'udp4', reuseAddr:true });
       this.sockets.push(socket)
-      
+
       socket.on('listening', this.onListening.bind(this, socket, ipAddress));
       socket.on('message', this.onMessage.bind(this));
 
@@ -152,7 +152,7 @@ class Broadlink extends EventEmitter {
     packet[0x0d] = year >> 8;
     packet[0x0e] = now.getMinutes();
     packet[0x0f] = now.getHours();
-    
+
     const subyear = year % 100;
     packet[0x10] = subyear;
     packet[0x11] = now.getDay();
@@ -204,7 +204,7 @@ class Broadlink extends EventEmitter {
     const { log, debug } = this;
 
     if (this.devices[macAddress]) return;
-  
+
     const isHostObjectValid = (
       typeof host === 'object' &&
       (host.port || host.port === 0) &&
@@ -229,10 +229,10 @@ class Broadlink extends EventEmitter {
 
     if (!isKnownDevice) {
       log(`\n\x1b[35m[Info]\x1b[0m We've discovered an unknown Broadlink device. This likely won't cause any issues.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${deviceType.toString(16)}". The device is connected to your network with the IP address "${host.address}".\n`);
-      
+
       return null;
     }
-    
+
     // The Broadlink device is something we can use.
     const device = new Device(host, macAddress, deviceType)
     device.log = log;
@@ -261,7 +261,7 @@ class Device {
 
     //Use different headers for rm4 devices
     this.request_header = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)]) ? new Buffer([0x04, 0x00]) : new Buffer([]);
-    this.code_sending_header = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)]) ? new Buffer([0xd0, 0x00]) : new Buffer([]);
+    this.code_sending_header = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)]) ? new Buffer([0xda, 0x00]) : new Buffer([]);
 
     this.on = this.emitter.on;
     this.emit = this.emitter.emit;
@@ -281,28 +281,30 @@ class Device {
 
   // Create a UDP socket to receive messages from the broadlink device.
   setupSocket() {
+    const { log, debug } = this;
     const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
     this.socket = socket;
 
     socket.on('message', (response) => {
       const encryptedPayload = Buffer.alloc(response.length - 0x38, 0);
       response.copy(encryptedPayload, 0, 0x38);
-      
+
       const err = response[0x22] | (response[0x23] << 8);
       if (err != 0) return;
-      
+
       const decipher = crypto.createDecipheriv('aes-128-cbc', this.key, this.iv);
       decipher.setAutoPadding(false);
-      
+
       let payload = decipher.update(encryptedPayload);
-      
+
       const p2 = decipher.final();
       if (p2) payload = Buffer.concat([payload, p2]);
-      
-      if (!payload) return false;
-      
-      const command = response[0x26];
 
+      if (!payload) return false;
+
+      if (debug) log('\x1b[33m[DEBUG]\x1b[0m Response received: ', response.toString('hex'));
+
+      const command = response[0x26];
       if (command == 0xe9) {
         this.key = Buffer.alloc(0x10, 0);
         payload.copy(this.key, 0, 0x04, 0x14);
@@ -314,7 +316,7 @@ class Device {
       } else if (command == 0xee || command == 0xef) {
         const payloadHex = payload.toString('hex');
         const requestHeaderHex = this.request_header.toString('hex');
-        
+
         const indexOfHeader = payloadHex.indexOf(requestHeaderHex);
 
         if (indexOfHeader > -1) {
@@ -322,9 +324,9 @@ class Device {
         }
         this.onPayloadReceived(err, payload);
       } else if (command == 0x72) {
-        console.log('Command Acknowledged');
+        log('\x1b[35m[INFO]\x1b[0m Command Acknowledged');
       } else {
-        console.log('Unhandled Command: ', command);
+        log('\x1b[33m[DEBUG]\x1b[0m Unhandled Command: ', command);
       }
     });
 
@@ -393,7 +395,7 @@ class Device {
     packet[0x32] = this.id[2];
     packet[0x33] = this.id[3];
 
-    
+
     if (payload){
       const padPayload = Buffer.alloc(16 - payload.length % 16, 0)
       payload = Buffer.concat([payload, padPayload]);
@@ -407,12 +409,12 @@ class Device {
 
     packet[0x34] = checksum & 0xff;
     packet[0x35] = checksum >> 8;
-    
+
     const cipher = crypto.createCipheriv('aes-128-cbc', this.key, this.iv);
     payload = cipher.update(payload);
-    
+
     packet = Buffer.concat([packet, payload]);
-        
+
     checksum = 0xbeaf;
     for (let i = 0; i < packet.length; i++) {
       checksum += packet[i];
@@ -421,20 +423,18 @@ class Device {
     packet[0x20] = checksum & 0xff;
     packet[0x21] = checksum >> 8;
 
-    if (debug) log('\x1b[33m[DEBUG]\x1b[0m packet', packet.toString('hex'))
+    if (debug) log('\x1b[33m[DEBUG]\x1b[0m (',this.mac.toString('hex'),') Packet sent:', packet.toString('hex'))
 
     socket.send(packet, 0, packet.length, this.host.port, this.host.address, (err, bytes) => {
       if (debug && err) log('\x1b[33m[DEBUG]\x1b[0m send packet error', err)
-      if (debug) log('\x1b[33m[DEBUG]\x1b[0m successfuly sent packet - bytes: ', bytes)
     });
   }
 
   onPayloadReceived (err, payload) {
     const param = payload[0];
     const { log, debug } = this;
-    
-    if (debug) log('\x1b[33m[DEBUG]\x1b[0m Packet received with param 0x', param.toString(16))
-    if (debug) log('\x1b[33m[DEBUG]\x1b[0m Packet received: ', payload.toString('hex'))
+
+    if (debug) log('\x1b[33m[DEBUG]\x1b[0m (',this.mac.toString('hex'),') Packet received: ', payload.toString('hex'))
 
     switch (param) {
       case 0x1: {
@@ -448,10 +448,18 @@ class Device {
         this.emit('rawData', data);
         break;
       }
+      case 0x9: { //get from check_data
+        const data = Buffer.alloc(1, 0);
+        payload.copy(data, 0, 0x4);
+        if (data[0] !== 0x1) break;
+        this.emit('rawRFData', data);
+        break;
+      }
       case 0xa: {
-        const temp = (payload[0x6] * 10 + payload[0x7]) / 10.0;
+        const temp = (payload[0x6] * 100 + payload[0x7]) / 100.0;
         //const humidity = (payload[0x8] * 10 + payload[0x9]) / 10.0;
         this.emit('temperature', temp);
+        //this.emit('humidity', humidity);
         break;
       }
       case 0x1a: { //get from check_data
@@ -502,16 +510,12 @@ class Device {
   }
 
   checkTemperature() {
-    //let packet = Buffer.alloc(16, 0);
-    //packet[0] = 1;
-    let packet = new Buffer([0x1]);
+    let packet = (rm4DeviceTypes[parseInt(this.type, 16)] || rm4PlusDeviceTypes[parseInt(this.type, 16)]) ? new Buffer([0x24]) : new Buffer([0x1]);
     packet = Buffer.concat([this.request_header, packet]);
     this.sendPacket(0x6a, packet);
   }
 
   cancelLearn() {
-    //const packet = Buffer.alloc(16, 0);
-    //packet[0] = 0x1e;
     let packet = new Buffer([0x1e]);
     packet = Buffer.concat([this.request_header, packet]);
     this.sendPacket(0x6a, packet);
@@ -519,24 +523,18 @@ class Device {
 
   addRFSupport() {
     this.enterRFSweep = () => {
-      //const packet = Buffer.alloc(16, 0);
-      //packet[0] = 0x19;
       let packet = new Buffer([0x19]);
       packet = Buffer.concat([this.request_header, packet]);
       this.sendPacket(0x6a, packet);
     }
 
     this.checkRFData = () => {
-      //const packet = Buffer.alloc(16, 0);
-      //packet[0] = 0x1a;
       let packet = new Buffer([0x1a]);
       packet = Buffer.concat([this.request_header, packet]);
       this.sendPacket(0x6a, packet);
     }
 
     this.checkRFData2 = () => {
-      //const packet = Buffer.alloc(16, 0);
-      //packet[0] = 0x1b;
       let packet = new Buffer([0x1b]);
       packet = Buffer.concat([this.request_header, packet]);
       this.sendPacket(0x6a, packet);
