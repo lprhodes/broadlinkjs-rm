@@ -261,7 +261,7 @@ class Device {
 
     //Use different headers for rm4 devices
     this.request_header = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)]) ? new Buffer([0x04, 0x00]) : new Buffer([]);
-    this.code_sending_header = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)]) ? new Buffer([0xd0, 0x00]) : new Buffer([]);
+    this.code_sending_header = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)]) ? new Buffer([0xda, 0x00]) : new Buffer([]);
 
     this.on = this.emitter.on;
     this.emit = this.emitter.emit;
