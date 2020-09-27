@@ -458,8 +458,9 @@ class Device {
       case 0xa: {
         const temp = (payload[0x6] * 100 + payload[0x7]) / 100.0;
         const humidity = (payload[0x8] * 100 + payload[0x9]) / 100.0;
-        this.emit('temperature', temp);
-        this.emit('humidity', humidity);
+        console.log('Temp: ' + temp + ' Humidity: ' + humidity);
+        this.emit('temperature',temp, humidity);
+        //this.emit('humidity', humidity);
         break;
       }
       case 0x1a: { //get from check_data
@@ -514,7 +515,7 @@ class Device {
     packet = Buffer.concat([this.request_header, packet]);
     this.sendPacket(0x6a, packet);
   }
-  
+
   checkHumidity() {
     let packet = (rm4DeviceTypes[parseInt(this.type, 16)] || rm4PlusDeviceTypes[parseInt(this.type, 16)]) ? new Buffer([0x24]) : new Buffer([0x1]);
     packet = Buffer.concat([this.request_header, packet]);
