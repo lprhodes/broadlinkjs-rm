@@ -458,9 +458,7 @@ class Device {
       case 0xa: {
         const temp = (payload[0x6] * 100 + payload[0x7]) / 100.0;
         const humidity = (payload[0x8] * 100 + payload[0x9]) / 100.0;
-        console.log('Temp: ' + temp + ' Humidity: ' + humidity);
         this.emit('temperature',temp, humidity);
-        //this.emit('humidity', humidity);
         break;
       }
       case 0x1a: { //get from check_data
