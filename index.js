@@ -17,6 +17,7 @@ rmDeviceTypes[parseInt(0x2712, 16)] = 'Broadlink RM2';
 rmDeviceTypes[parseInt(0x2783, 16)] = 'Broadlink RM2 Home Plus';
 rmDeviceTypes[parseInt(0x277c, 16)] = 'Broadlink RM2 Home Plus GDT';
 rmDeviceTypes[parseInt(0x278f, 16)] = 'Broadlink RM Mini Shate';
+rmDeviceTypes[parseInt(0x2221, 16)] = 'Manual RM Device';
 
 // RM Devices (with RF support)
 const rmPlusDeviceTypes = {};
@@ -29,6 +30,7 @@ rmPlusDeviceTypes[parseInt(0x27a6, 16)] = 'Broadlink RM2 Pro PP';
 rmPlusDeviceTypes[parseInt(0x279d, 16)] = 'Broadlink RM3 Pro Plus';
 rmPlusDeviceTypes[parseInt(0x27a9, 16)] = 'Broadlink RM3 Pro Plus v2'; // (model RM 3422)
 rmPlusDeviceTypes[parseInt(0x27c3, 16)] = 'Broadlink RM3 Pro';
+rmPlusDeviceTypes[parseInt(0x2223, 16)] = 'Manual RM Pro Device';
 
 // RM4 Devices (without RF support)
 const rm4DeviceTypes = {};
@@ -40,12 +42,14 @@ rm4DeviceTypes[parseInt(0x6070, 16)] = "Broadlink RM Mini 4 C";
 rm4DeviceTypes[parseInt(0x62be, 16)] = "Broadlink RM Mini 4 C";
 rm4DeviceTypes[parseInt(0x610f, 16)] = "Broadlink RM Mini 4 C";
 rm4DeviceTypes[parseInt(0x648d, 16)] = "Broadlink RM Mini 4 S";
+rm4DeviceTypes[parseInt(0x2225, 16)] = 'Manual RM4 Device';
 
 // RM4 Devices (with RF support)
 const rm4PlusDeviceTypes = {};
 rm4PlusDeviceTypes[parseInt(0x6026, 16)] = "Broadlink RM 4 Pro";
 rm4PlusDeviceTypes[parseInt(0x61a2, 16)] = "Broadlink RM 4 Pro";
 rm4PlusDeviceTypes[parseInt(0x649b, 16)] = "Broadlink RM 4 Pro";
+rm4PlusDeviceTypes[parseInt(0x2227, 16)] = 'Manual RM4 Pro Device';
 
 // Known Unsupported Devices
 const unsupportedDeviceTypes = {};
