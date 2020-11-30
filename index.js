@@ -6,12 +6,12 @@ const assert = require('assert');
 
 // RM Devices (without RF support)
 const rmDeviceTypes = {};
-rmDeviceTypes[parseInt(0x2737, 16)] = "Broadlink RM Mini";
-rmDeviceTypes[parseInt(0x27c7, 16)] = 'Broadlink RM Mini 3 A';
-rmDeviceTypes[parseInt(0x27c2, 16)] = "Broadlink RM Mini 3 B";
-rmDeviceTypes[parseInt(0x27de, 16)] = "Broadlink RM Mini 3 C";
-rmDeviceTypes[parseInt(0x5f36, 16)] = "Broadlink RM Mini 3 D";
-rmDeviceTypes[parseInt(0x27d3, 16)] = "Broadlink RM Mini 3 KR";
+rmDeviceTypes[parseInt(0x2737, 16)] = "Broadlink RM3 Mini";
+rmDeviceTypes[parseInt(0x27c7, 16)] = 'Broadlink RM3 Mini A';
+rmDeviceTypes[parseInt(0x27c2, 16)] = "Broadlink RM3 Mini B";
+rmDeviceTypes[parseInt(0x27de, 16)] = "Broadlink RM3 Mini C";
+rmDeviceTypes[parseInt(0x5f36, 16)] = "Broadlink RM3 Mini D";
+rmDeviceTypes[parseInt(0x27d3, 16)] = "Broadlink RM3 Mini KR";
 rmDeviceTypes[parseInt(0x273d, 16)] = 'Broadlink RM Pro Phicomm';
 rmDeviceTypes[parseInt(0x2712, 16)] = 'Broadlink RM2';
 rmDeviceTypes[parseInt(0x2783, 16)] = 'Broadlink RM2 Home Plus';
@@ -34,21 +34,22 @@ rmPlusDeviceTypes[parseInt(0x2223, 16)] = 'Manual RM Pro Device';
 
 // RM4 Devices (without RF support)
 const rm4DeviceTypes = {};
-rm4DeviceTypes[parseInt(0x51da, 16)] = "Broadlink RM Mini 4";
-rm4DeviceTypes[parseInt(0x5f36, 16)] = "Broadlink RM Mini 3";
-rm4DeviceTypes[parseInt(0x610e, 16)] = "Broadlink RM Mini 4";
-rm4DeviceTypes[parseInt(0x62bc, 16)] = "Broadlink RM Mini 4";
-rm4DeviceTypes[parseInt(0x6070, 16)] = "Broadlink RM Mini 4 C";
-rm4DeviceTypes[parseInt(0x62be, 16)] = "Broadlink RM Mini 4 C";
-rm4DeviceTypes[parseInt(0x610f, 16)] = "Broadlink RM Mini 4 C";
-rm4DeviceTypes[parseInt(0x648d, 16)] = "Broadlink RM Mini 4 S";
+rm4DeviceTypes[parseInt(0x51da, 16)] = "Broadlink RM4 Mini";
+rm4DeviceTypes[parseInt(0x5f36, 16)] = "Broadlink RM3 Mini";
+rm4DeviceTypes[parseInt(0x610e, 16)] = "Broadlink RM4 Mini";
+rm4DeviceTypes[parseInt(0x62bc, 16)] = "Broadlink RM4 Mini" ;
+rm4DeviceTypes[parseInt(0x6070, 16)] = "Broadlink RM4 Mini C";
+rm4DeviceTypes[parseInt(0x62be, 16)] = "Broadlink RM4 Mini C";
+rm4DeviceTypes[parseInt(0x610f, 16)] = "Broadlink RM4 Mini C";
+rm4DeviceTypes[parseInt(0x648d, 16)] = "Broadlink RM4 Mini S";
 rm4DeviceTypes[parseInt(0x2225, 16)] = 'Manual RM4 Device';
 
 // RM4 Devices (with RF support)
 const rm4PlusDeviceTypes = {};
-rm4PlusDeviceTypes[parseInt(0x6026, 16)] = "Broadlink RM 4 Pro";
-rm4PlusDeviceTypes[parseInt(0x61a2, 16)] = "Broadlink RM 4 Pro";
-rm4PlusDeviceTypes[parseInt(0x649b, 16)] = "Broadlink RM 4 Pro";
+rm4PlusDeviceTypes[parseInt(0x6026, 16)] = "Broadlink RM4 Pro";
+rm4PlusDeviceTypes[parseInt(0x61a2, 16)] = "Broadlink RM4 Pro";
+rm4PlusDeviceTypes[parseInt(0x649b, 16)] = "Broadlink RM4 Pro";
+rm4PlusDeviceTypes[parseInt(0x653c, 16)] = "Broadlink RM4 Pro";
 rm4PlusDeviceTypes[parseInt(0x2227, 16)] = 'Manual RM4 Pro Device';
 
 // Known Unsupported Devices
@@ -290,6 +291,7 @@ class Device {
     this.socket = socket;
 
     socket.on('message', (response) => {
+      if(response.length < 39) return;
       const encryptedPayload = Buffer.alloc(response.length - 0x38, 0);
       response.copy(encryptedPayload, 0, 0x38);
 
@@ -452,11 +454,15 @@ class Device {
         this.emit('rawData', data);
         break;
       }
-      case 0x9: { //get from check_data
+      case 0x9: { //RM4 get from check_data
         const data = Buffer.alloc(1, 0);
-        payload.copy(data, 0, 0x4);
+        payload.copy(data, 0, 0x6);
         if (data[0] !== 0x1) break;
         this.emit('rawRFData', data);
+        break;
+      }
+      case 0xb1: { //RM4 get RF from check_data
+        this.emit('rawData', payload);
         break;
       }
       case 0xa: {
@@ -475,7 +481,7 @@ class Device {
       case 0x1b: { //get from check_data
         const data = Buffer.alloc(1, 0);
         payload.copy(data, 0, 0x4);
-        if (data[0] !== 0x1) break;
+        //if (data[0] !== 0x1) break; Check removed for RM4 RF Learning. Might need to restore an error check here
         this.emit('rawRFData2', data);
         break;
       }
