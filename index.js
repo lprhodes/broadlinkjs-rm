@@ -268,6 +268,8 @@ class Device {
     this.rm4Type = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)])
     this.request_header = this.rm4Type ? new Buffer([0x04, 0x00]) : new Buffer([]);
     this.code_sending_header = this.rm4Type ? new Buffer([0xda, 0x00]) : new Buffer([]);
+    //except 5f36 ¯\_(ツ)_/¯
+    if (deviceType == 0x5f36) {this.code_sending_header = new Buffer([0xd0, 0x00]);}
 
     this.on = this.emitter.on;
     this.emit = this.emitter.emit;
