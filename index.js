@@ -35,9 +35,9 @@ rmPlusDeviceTypes[parseInt(0x2223, 16)] = 'Manual RM Pro Device';
 // RM4 Devices (without RF support)
 const rm4DeviceTypes = {};
 rm4DeviceTypes[parseInt(0x51da, 16)] = "Broadlink RM4 Mini";
-rm4DeviceTypes[parseInt(0x5f36, 16)] = "Broadlink RM3 Mini";
 rm4DeviceTypes[parseInt(0x610e, 16)] = "Broadlink RM4 Mini";
-rm4DeviceTypes[parseInt(0x62bc, 16)] = "Broadlink RM4 Mini" ;
+rm4DeviceTypes[parseInt(0x62bc, 16)] = "Broadlink RM4 Mini";
+rm4DeviceTypes[parseInt(0x653a, 16)] = "Broadlink RM4 Mini";
 rm4DeviceTypes[parseInt(0x6070, 16)] = "Broadlink RM4 Mini C";
 rm4DeviceTypes[parseInt(0x62be, 16)] = "Broadlink RM4 Mini C";
 rm4DeviceTypes[parseInt(0x610f, 16)] = "Broadlink RM4 Mini C";
@@ -265,8 +265,9 @@ class Device {
     this.model = rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)] || rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)];
 
     //Use different headers for rm4 devices
-    this.request_header = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)]) ? new Buffer([0x04, 0x00]) : new Buffer([]);
-    this.code_sending_header = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)]) ? new Buffer([0xda, 0x00]) : new Buffer([]);
+    this.rm4Type = (rm4DeviceTypes[parseInt(deviceType, 16)] || rm4PlusDeviceTypes[parseInt(deviceType, 16)])
+    this.request_header = this.rm4Type ? new Buffer([0x04, 0x00]) : new Buffer([]);
+    this.code_sending_header = this.rm4Type ? new Buffer([0xda, 0x00]) : new Buffer([]);
 
     this.on = this.emitter.on;
     this.emit = this.emitter.emit;
@@ -291,7 +292,7 @@ class Device {
     this.socket = socket;
 
     socket.on('message', (response) => {
-      if(response.length < 39) return;
+      if(response.length < 0x39) return;
       const encryptedPayload = Buffer.alloc(response.length - 0x38, 0);
       response.copy(encryptedPayload, 0, 0x38);
 
@@ -457,7 +458,7 @@ class Device {
       case 0x9: { //RM4 get from check_data
         const data = Buffer.alloc(1, 0);
         payload.copy(data, 0, 0x6);
-        if (data[0] !== 0x1) break;
+        //if (data[0] !== 0x1) break;
         this.emit('rawRFData', data);
         break;
       }
