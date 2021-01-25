@@ -41,6 +41,7 @@ rm4DeviceTypes[parseInt(0x653a, 16)] = "Broadlink RM4 Mini";
 rm4DeviceTypes[parseInt(0x6070, 16)] = "Broadlink RM4 Mini C";
 rm4DeviceTypes[parseInt(0x62be, 16)] = "Broadlink RM4 Mini C";
 rm4DeviceTypes[parseInt(0x610f, 16)] = "Broadlink RM4 Mini C";
+rm4DeviceTypes[parseInt(0x6539, 16)] = "Broadlink RM4 Mini C";
 rm4DeviceTypes[parseInt(0x648d, 16)] = "Broadlink RM4 Mini S";
 rm4DeviceTypes[parseInt(0x2225, 16)] = 'Manual RM4 Device';
 
@@ -396,17 +397,16 @@ class Device {
     packet[0x26] = command;
     packet[0x28] = this.count & 0xff;
     packet[0x29] = this.count >> 8;
-    packet[0x2a] = this.mac[2]
-    packet[0x2b] = this.mac[1]
-    packet[0x2c] = this.mac[0]
-    packet[0x2d] = this.mac[3]
-    packet[0x2e] = this.mac[4]
-    packet[0x2f] = this.mac[5]
-    packet[0x30] = this.id[0];
-    packet[0x31] = this.id[1];
-    packet[0x32] = this.id[2];
-    packet[0x33] = this.id[3];
-
+    packet[0x2a] = this.mac[5]
+    packet[0x2b] = this.mac[4]
+    packet[0x2c] = this.mac[3]
+    packet[0x2d] = this.mac[2]
+    packet[0x2e] = this.mac[1]
+    packet[0x2f] = this.mac[0]
+    packet[0x30] = this.id[3];
+    packet[0x31] = this.id[2];
+    packet[0x32] = this.id[1];
+    packet[0x33] = this.id[0];
 
     if (payload){
       const padPayload = Buffer.alloc(16 - payload.length % 16, 0)
