@@ -469,6 +469,7 @@ class Device {
         this.emit('rawRFData', data);
         break;
       }
+      case 0xa9:
       case 0xb0: 
       case 0xb1: { //RF Code returned
         this.emit('rawData', payload);
