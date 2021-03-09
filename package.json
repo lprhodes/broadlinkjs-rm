@@ -1,14 +1,14 @@
 {
   "name": "broadlinkjs-rm",
-  "version": "0.7.7",
-  "description": "A Node.JS fork of broadlinkjs specifically intended for interacting with RM devices in homebridge-broadlink-rm",
+  "version": "0.8.0",
+  "description": "A fork of the broadlinkjs-rm library for use with Broadlink Bridge",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lprhodes/broadlinkjs-rm.git"
+    "url": "git+https://github.com/401unauthorized/broadlinkjs-rm.git"
   },
   "keywords": [
     "Broadlink",
@@ -16,10 +16,10 @@
     "remote",
     "control"
   ],
-  "author": "David Tao",
+  "author": "Stephen Mendez",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/lprhodes/broadlinkjs-rm/issues"
+    "url": "https://github.com/401unauthorized/broadlinkjs-rm/issues"
   },
-  "homepage": "https://github.com/lprhodes/broadlinkjs-rm#readme"
+  "homepage": "https://github.com/401unauthorized/broadlinkjs-rm#readme"
 }
